@@ -1,2 +1,2 @@
 # IRDControlRoom
-A SNMP data collector displaying informations thru web page and GPIO
+A SNMP data collector displaying informations via web UI and GPIO
