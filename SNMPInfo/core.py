@@ -35,20 +35,50 @@ args = parser.parse_args()
 try:
     config = configparser.ConfigParser()
     config.read(args.config)
-    DR5000Addr = config.get('DR5000','IPAddr')
-    DR5000Model = config.get('DR5000','Model')
-    DR5000Name = config.get('DR5000','OidName')
-    DR5000Snr = config.get('DR5000','OidSnr')
-    DR5000Margin = config.get('DR5000','OidMargin')
-    DR5000SvcName = config.get('DR5000','OidServiceName')
+    DR5000Name = config.get('DR5000', 'OidName')
+    DR5000Snr = config.get('DR5000', 'OidSnr')
+    DR5000Margin = config.get('DR5000', 'OidMargin')
+    DR5000SvcName = config.get('DR5000', 'OidServiceName')
+    RX8200Name = config.get('RX8200', 'OidName')
+    RX8200Snr = config.get('RX8200', 'OidSnr')
+    RX8200Margin = config.get('RX8200', 'OidMargin')
+    RX8200SvcName = config.get('RX8200', 'OidServiceName')
+    TT1260Name = config.get('TT1260', 'OidName')
+    TT1260Snr = config.get('TT1260', 'OidSnr')
+    TT1260Margin = config.get('TT1260', 'OidMargin')
+    TT1260SvcName = config.get('TT1260', 'OidServiceName')
+    RX1290Name = config.get('RX1290', 'OidName')
+    RX1290Snr = config.get('RX1290', 'OidSnr')
+    RX1290Margin = config.get('RX1290', 'OidMargin')
+    RX1290SvcName = config.get('RX1290', 'OidServiceName')
+    s = {}
+    for i in range(1, 36):
+        Name = "ird" + str(i)
+        Model = "type" + str(i)
+        s[Name] = config.get('IRD', 'IRD' + str(i))
+        s[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 
 except:
-    PrintException("Fichier de configuration invalide ou non précisé.\n\033[1;31mPour rappel :\033[1;33m sudo ./core.py -c 'emplacement du fichier de configuration'\033[0m")
+    PrintException("Fichier de configuration invalide ou non précisé.Pour rappel : sudo ./core.py -c 'emplacement du fichier de configuration'")
     exit()
 
 # Démarrage de la boucle de vérification d'état de transmission
 logger.info("Initialisation du script...")
-c = csv.writer(open("D:\\fichier_status.csv", "w"))
 
-for Addr in DR5000Addr.split(","):
-    DR5000state(Addr, DR5000Model, DR5000Name, DR5000Snr, DR5000Margin, DR5000SvcName, c)
+while True:
+    c = csv.writer(open("D:\\fichier_status.csv", "w", newline=''), delimiter = ';')
+    for i in range(1, 36):
+        Name = "ird" + str(i)
+        Model = "type" + str(i)
+        if s[Model] == 'DR5000':
+            DR5000state(Name, DR5000Name, s[Name], DR5000SvcName, DR5000Snr, DR5000Margin, c)
+        elif s[Model] == 'RX8200':
+            print('RX8200state')
+        elif s[Model] == 'TT1260':
+            print('TT1260state')
+        elif s[Model] == 'RX1290':
+            print('RX1290state')
+        else:
+            pass
+    time.sleep(1)
+# Définir les fonctions pour chaque cas

@@ -57,14 +57,21 @@ def SNMPget(IPAddr, OID):
         state = '2'
         return state
 
-def DR5000state(Addr, DR5000Model, DR5000Name, DR5000Snr, DR5000Margin, DR5000SvcName, c):
-    Info = {'Model':DR5000Model,
+def DR5000state(Position, DR5000Name, Addr, DR5000SvcName, DR5000Snr, DR5000Margin, c):
+    DataCSV = []
+    Info = {'Position':Position,
             'Name':SNMPget(Addr, DR5000Name),
-            'Snr':SNMPget(Addr, DR5000Snr),
-            'Margin':SNMPget(Addr, DR5000Margin),
+            'Addr':Addr,
+            'Model':"Ateme DR5000",
             'SvcName':SNMPget(Addr, DR5000SvcName),
+            'Snr':int(SNMPget(Addr, DR5000Snr))/10,
+            'Margin':int(SNMPget(Addr, DR5000Margin))/10,
             }
     
     for key in Info:
-        print(Info[key])
-        c.writerow(Info[key])
+        DataCSV.append(Info[key])
+
+    print(DataCSV)
+    c.writerow(DataCSV)
+
+# Dupliquer DR5000state et personnaliser par IRD
