@@ -55,12 +55,12 @@ def SNMPget(IPAddr, OID):
                 ObjectType(ObjectIdentity(OID))))
         if errorIndication:
             logger.error(errorIndication)
-            state = '2'
+            state = 'Erreur'
             return state
         elif errorStatus:
             logger.error('%s at %s' % (errorStatus.prettyPrint(),
                             errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
-            state = '2'
+            state = 'Erreur'
             return state
         else:
             for varBind in varBinds:
@@ -70,8 +70,8 @@ def SNMPget(IPAddr, OID):
                 state = m.group(2)
                 return state
     except:
-        logger.error("Erreur générale...")
-        state = '2'
+        logger.error("Impossible de récupérer les infos SNMP...")
+        state = 'Erreur'
         return state
 
 def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, f, DataCSV):
