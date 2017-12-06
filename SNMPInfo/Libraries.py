@@ -30,7 +30,7 @@ def PrintException(msg):
 
 # Définition de la fonction de vérification du type d'OS utilisé
 def OSType(OS):
-    if platform.system().lower() == OS:
+    if platform.system().lower() == OS.lower():
         return True
     else:
         return False
@@ -74,7 +74,7 @@ def SNMPget(IPAddr, OID):
         state = 'Erreur'
         return state
 
-def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, f, DataCSV):
+def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     Info = {'Position':Position,
             'Name':SNMPget(Addr, Name),
             'Addr':Addr,
@@ -83,49 +83,71 @@ def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, f, DataCSV):
             'Snr':int(SNMPget(Addr, Snr))/10,
             'Margin':int(SNMPget(Addr, Margin))/10,
             }
+    d = []
     for key in Info:
-        DataCSV.append(Info[key])
-    logger.debug(DataCSV)
-    f.writerow(DataCSV)
+        d.append(Info[key])
+    DataCSV.append(d)
+    return DataCSV
 
-def RX8200state(Position, Name, Addr, SvcName, Snr, Margin, f, DataCSV):
+def RX8200state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     Info = {'Position':Position,
-            'Name':SNMPget(Addr, Name),
+            'Name':Name,
             'Addr':Addr,
-            'Model':"Ericson RX8200",
+            'Model':"Ericsson RX8200",
             'SvcName':SNMPget(Addr, SvcName),
-            'Snr':int(SNMPget(Addr, Snr)),
-            'Margin':int(SNMPget(Addr, Margin)),
+            'Snr':SNMPget(Addr, Snr)[:4],
+            'Margin':SNMPget(Addr, Margin)[2:6],
             }
+    if Info['SvcName'][:7] == "No Such":
+        Info['SvcName'] = ''
+    d = []
     for key in Info:
-        DataCSV.append(Info[key])
-    logger.debug(DataCSV)
-    f.writerow(DataCSV)
+        d.append(Info[key])
+    DataCSV.append(d)
+    return DataCSV
 
-def TT1260state(Position, Name, Addr, SvcName, Snr, Margin, f, DataCSV):
+def TT1260state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     Info = {'Position':Position,
-            'Name':SNMPget(Addr, Name),
+            'Name':Name,
             'Addr':Addr,
             'Model':"Tandberg TT1260",
             'SvcName':SNMPget(Addr, SvcName),
-            'Snr':int(SNMPget(Addr, Snr)),
-            'Margin':int(SNMPget(Addr, Margin)),
+            'Snr':int(SNMPget(Addr, Snr))/100,
+            'Margin':int(SNMPget(Addr, Margin))/100,
             }
+    if Info['Margin'] == 100.0:
+        Info['Margin'] = 0.0
+    d = []
     for key in Info:
-        DataCSV.append(Info[key])
-    logger.debug(DataCSV)
-    f.writerow(DataCSV)
+        d.append(Info[key])
+    DataCSV.append(d)
+    return DataCSV
 
-def RX1290state(Position, Name, Addr, SvcName, Snr, Margin, csv, DataCSV):
+def RX1290state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     Info = {'Position':Position,
-            'Name':SNMPget(Addr, Name),
+            'Name':Name,
             'Addr':Addr,
-            'Model':"Ericson RX1290",
+            'Model':"Ericsson RX1290",
             'SvcName':SNMPget(Addr, SvcName),
-            'Snr':int(SNMPget(Addr, Snr)),
-            'Margin':int(SNMPget(Addr, Margin)),
+            'Snr':int(SNMPget(Addr, Snr))/100,
+            'Margin':int(SNMPget(Addr, Margin))/100,
             }
+    d = []
     for key in Info:
-        DataCSV.append(Info[key])
-    logger.debug(DataCSV)
-    f.writerow(DataCSV)
+        d.append(Info[key])
+    DataCSV.append(d)
+    return DataCSV
+
+def NoSat(Position, SatName, Model, DataCSV):
+    Info = {'Position':Position,
+            'Name':SatName,
+            'Addr':'',
+            'Model':Model,
+            'SvcName':'',
+            'Snr':'',
+            'Margin':'',
+            }
+    d = []
+    for key in Info:
+        d.append(Info[key])
+    DataCSV.append(d)

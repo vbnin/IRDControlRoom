@@ -11,9 +11,10 @@ import time
 import logging
 import configparser
 import csv
+import threading
 from logging.handlers import RotatingFileHandler
 from argparse import ArgumentParser
-from Libraries import PrintException, DR5000state, RX8200state, TT1260state, RX1290state, Ping
+from Libraries import PrintException, DR5000state, RX8200state, TT1260state, RX1290state, Ping, NoSat
 
 # Activation du logger principal
 try:
@@ -33,7 +34,11 @@ args = parser.parse_args()
 
 # Lecture du fichier de Configuration et attribution des variables
 try:
-    ird = DR5000 = RX8200 = TT1260 = RX1290 = {}
+    ird = {}
+    DR5000 = {} 
+    RX8200 = {}
+    TT1260 = {}
+    RX1290 = {}
     config = configparser.ConfigParser()
     config.read(args.config)
     OS = config.get('GENERAL', 'OSType')
@@ -41,15 +46,12 @@ try:
     DR5000['Snr'] = config.get('DR5000', 'OidSnr')
     DR5000['Margin'] = config.get('DR5000', 'OidMargin')
     DR5000['SvcName'] = config.get('DR5000', 'OidServiceName')
-    RX8200['Name'] = config.get('RX8200', 'OidName')
     RX8200['Snr'] = config.get('RX8200', 'OidSnr')
     RX8200['Margin'] = config.get('RX8200', 'OidMargin')
     RX8200['SvcName'] = config.get('RX8200', 'OidServiceName')
-    TT1260['Name'] = config.get('TT1260', 'OidName')
     TT1260['Snr'] = config.get('TT1260', 'OidSnr')
     TT1260['Margin'] = config.get('TT1260', 'OidMargin')
     TT1260['SvcName'] = config.get('TT1260', 'OidServiceName')
-    RX1290['Name'] = config.get('RX1290', 'OidName')
     RX1290['Snr'] = config.get('RX1290', 'OidSnr')
     RX1290['Margin'] = config.get('RX1290', 'OidMargin')
     RX1290['SvcName'] = config.get('RX1290', 'OidServiceName')
@@ -72,14 +74,21 @@ while True:
     for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "type" + str(i)
+        SatName = "SAT-" + str(i)
         if ird[Model] == 'DR5000' and Ping(ird[Position], OS) is True:
-            DR5000state(Position, DR5000['Name'], ird[Position], DR5000['SvcName'], DR5000['Snr'], DR5000['Margin'], f, DataCSV)
+            t = threading.Thread(target=DR5000state, args=(Position, DR5000['Name'], ird[Position], DR5000['SvcName'], DR5000['Snr'], DR5000['Margin'], DataCSV))
+            t.start()
         elif ird[Model] == 'RX8200' and Ping(ird[Position], OS) is True:
-            RX8200state(Position, RX8200['Name'], ird[Position], RX8200['SvcName'], RX8200['Snr'], RX8200['Margin'], f, DataCSV)
+            t = threading.Thread(target=RX8200state, args=(Position, SatName, ird[Position], RX8200['SvcName'], RX8200['Snr'], RX8200['Margin'], DataCSV))
+            t.start()
         elif ird[Model] == 'TT1260' and Ping(ird[Position], OS) is True:
-            TT1260state(Position, TT1260['Name'], ird[Position], TT1260['SvcName'], TT1260['Snr'], TT1260['Margin'], f, DataCSV)
+            t = threading.Thread(target=TT1260state, args=(Position, SatName, ird[Position], TT1260['SvcName'], TT1260['Snr'], TT1260['Margin'], DataCSV))
+            t.start()
         elif ird[Model] == 'RX1290' and Ping(ird[Position], OS) is True:
-            RX1290state(Position, RX1290['Name'], ird[Position], RX1290['SvcName'], RX1290['Snr'], RX1290['Margin'], f, DataCSV)
+            t = threading.Thread(target=RX1290state, args=(Position, SatName, ird[Position], RX1290['SvcName'], RX1290['Snr'], RX1290['Margin'], DataCSV))
+            t.start()
         else:
-            logger.error("Erreur à la position " + str(i))
-    time.sleep(1)
+            NoSat(Position, SatName, ird[Model], DataCSV)
+    time.sleep(2)         
+    f.writerows(DataCSV)
+    logger.info("Done")
