@@ -70,25 +70,35 @@ logger.info("Initialisation du script...")
 
 while True:
     DataCSV = []
+    Threads = []
+    t = {}
     f = csv.writer(open("fichier_status.csv", "w", newline=''), delimiter = ';')
     for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "type" + str(i)
         SatName = "SAT-" + str(i)
         if ird[Model] == 'DR5000' and Ping(ird[Position], OS) is True:
-            t = threading.Thread(target=DR5000state, args=(Position, DR5000['Name'], ird[Position], DR5000['SvcName'], DR5000['Snr'], DR5000['Margin'], DataCSV))
-            t.start()
+            t[str(i)] = threading.Thread(target=DR5000state, args=(Position, DR5000['Name'], ird[Position], DR5000['SvcName'], DR5000['Snr'], DR5000['Margin'], DataCSV))
+            t[str(i)].start()
+            Threads.append(t[str(i)])
         elif ird[Model] == 'RX8200' and Ping(ird[Position], OS) is True:
-            t = threading.Thread(target=RX8200state, args=(Position, SatName, ird[Position], RX8200['SvcName'], RX8200['Snr'], RX8200['Margin'], DataCSV))
-            t.start()
+            t[str(i)] = threading.Thread(target=RX8200state, args=(Position, SatName, ird[Position], RX8200['SvcName'], RX8200['Snr'], RX8200['Margin'], DataCSV))
+            t[str(i)].start()
+            Threads.append(t[str(i)])
         elif ird[Model] == 'TT1260' and Ping(ird[Position], OS) is True:
-            t = threading.Thread(target=TT1260state, args=(Position, SatName, ird[Position], TT1260['SvcName'], TT1260['Snr'], TT1260['Margin'], DataCSV))
-            t.start()
+            t[str(i)] = threading.Thread(target=TT1260state, args=(Position, SatName, ird[Position], TT1260['SvcName'], TT1260['Snr'], TT1260['Margin'], DataCSV))
+            t[str(i)].start()
+            Threads.append(t[str(i)])
         elif ird[Model] == 'RX1290' and Ping(ird[Position], OS) is True:
-            t = threading.Thread(target=RX1290state, args=(Position, SatName, ird[Position], RX1290['SvcName'], RX1290['Snr'], RX1290['Margin'], DataCSV))
-            t.start()
+            t[str(i)] = threading.Thread(target=RX1290state, args=(Position, SatName, ird[Position], RX1290['SvcName'], RX1290['Snr'], RX1290['Margin'], DataCSV))
+            t[str(i)].start()
+            Threads.append(t[str(i)])
         else:
             NoSat(Position, SatName, ird[Model], DataCSV)
-    time.sleep(2)         
+    for t in Threads:
+        try:
+            t.join()
+        except:
+            logger.error("Thread already finished")     
     f.writerows(DataCSV)
     logger.info("Done")
