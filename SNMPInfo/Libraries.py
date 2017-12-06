@@ -11,7 +11,6 @@ import logging
 import re
 import csv
 import subprocess
-import platform
 from logging.handlers import RotatingFileHandler
 from pysnmp.hlapi import *
 
@@ -28,17 +27,10 @@ def PrintException(msg):
     print(msg)
     print("***********************************************************************")
 
-# Définition de la fonction de vérification du type d'OS utilisé
-def OSType(OS):
-    if platform.system().lower() == OS.lower():
-        return True
-    else:
-        return False
-
 # Définition de la fonction de ping
 def Ping(hostname, OS):
     try:
-        subprocess.check_output("ping -{0} 1 -w 100 -{1} 255 {2}".format("n" if OSType(OS) is True else "c", "i" if OSType(OS) is True else "t", hostname))
+        subprocess.check_output("ping -{0} 1 -w 100 -{1} 255 {2}".format("n" if OS == 'windows' else "c", "i" if OS == 'windows' else "t", hostname))
     except:
         logger.error("L'IRD " + hostname + " est injoignable !!")
         return False
@@ -86,6 +78,7 @@ def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     d = []
     for key in Info:
         d.append(Info[key])
+    print(d)
     DataCSV.append(d)
     return DataCSV
 
@@ -103,6 +96,7 @@ def RX8200state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     d = []
     for key in Info:
         d.append(Info[key])
+    print(d)
     DataCSV.append(d)
     return DataCSV
 
@@ -120,6 +114,7 @@ def TT1260state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     d = []
     for key in Info:
         d.append(Info[key])
+    print(d)
     DataCSV.append(d)
     return DataCSV
 
@@ -135,6 +130,7 @@ def RX1290state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
     d = []
     for key in Info:
         d.append(Info[key])
+    print(d)
     DataCSV.append(d)
     return DataCSV
 
@@ -150,4 +146,6 @@ def NoSat(Position, SatName, Model, DataCSV):
     d = []
     for key in Info:
         d.append(Info[key])
+    print(d)
     DataCSV.append(d)
+    return DataCSV

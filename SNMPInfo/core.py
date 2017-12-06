@@ -41,7 +41,7 @@ try:
     RX1290 = {}
     config = configparser.ConfigParser()
     config.read(args.config)
-    OS = config.get('GENERAL', 'OSType')
+    OS = config.get('GENERAL', 'OSType').lower()
     DR5000['Name'] = config.get('DR5000', 'OidName')
     DR5000['Snr'] = config.get('DR5000', 'OidSnr')
     DR5000['Margin'] = config.get('DR5000', 'OidMargin')
