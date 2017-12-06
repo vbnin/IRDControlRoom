@@ -38,7 +38,7 @@ def OSType(OS):
 # Définition de la fonction de ping
 def Ping(hostname, OS):
     try:
-        subprocess.check_output("ping -{0} 2 -w 300 -{1} 255 {2}".format("n" if OSType(OS) is True else "c", "i" if OSType(OS) is True else "t", hostname))
+        subprocess.check_output("ping -{0} 1 -w 100 -{1} 255 {2}".format("n" if OSType(OS) is True else "c", "i" if OSType(OS) is True else "t", hostname))
     except:
         logger.error("L'IRD " + hostname + " est injoignable !!")
         return False
