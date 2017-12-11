@@ -10,6 +10,7 @@ Ce fichier est une librairie requise par le script core.py
 import logging
 import re
 import csv
+import threading
 import subprocess
 from logging.handlers import RotatingFileHandler
 from pysnmp.hlapi import *
@@ -30,49 +31,65 @@ def PrintException(msg):
     print(msg)
     print("*" * 30)
 
-# CallBack function for receiving traps
-def cbFun(transportDispatcher, transportDomain, transportAddress,
-        wholeMsg, Addresses, Data, f):
-    trap = {}
-    while wholeMsg:
-        msgVer = int(api.decodeMessageVersion(wholeMsg))
-        pMod = api.protoModules[msgVer]
-        reqMsg, wholeMsg = decoder.decode(
-            wholeMsg, asn1Spec=pMod.Message(),
-        )
-        logger.info('Notification message from ' + str(transportAddress[0]))
-        trap['Addr'] = transportAddress[0]
-        reqPDU = pMod.apiMessage.getPDU(reqMsg)
-        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-            varBinds = pMod.apiPDU.getVarBinds(reqPDU)
-            for oid, val in varBinds:
-                trap[oid.prettyPrint()] = val.prettyPrint()
-        if transportAddress[0] in Addresses['DR5000']:
-            IRDstate(transportAddress[0], 'DR5000', Data, f)
-        elif transportAddress[0] in Addresses['TT1260']:
-            IRDstate(transportAddress[0], 'TT1260', Data, f)
-        elif transportAddress[0] in Addresses['RX8200']:
-            IRDstate(transportAddress[0], 'RX8200', Data, f)
-    return trap
+def Launcher(Data):
+    DataCSV = []
+    Threads = []
+    t = {}
+    f = csv.writer(open("fichier_status.csv", "w", newline=''), delimiter = ';')
+    for i in range(1, 6):
+        Position = "ird" + str(i)
+        Model = "type" + str(i)
+        SatName = "SAT-" + str(i)
+        if Data[Model] == 'DR5000':
+            t[str(i)] = threading.Thread(target=DR5000state, args=(Position, SatName, Data, DataCSV))
+            t[str(i)].start()
+            Threads.append(t[str(i)])
+        # elif Data[Model] == 'RX8200':
+        #     t[str(i)] = threading.Thread(target=RX8200state, args=(Position, SatName, Data[Position], RX8200['SvcName'], RX8200['Snr'], RX8200['Margin'], DataCSV))
+        #     t[str(i)].start()
+        #     Threads.append(t[str(i)])
+        # elif Data[Model] == 'TT1260':
+        #     t[str(i)] = threading.Thread(target=TT1260state, args=(Position, SatName, Data[Position], TT1260['SvcName'], TT1260['Snr'], TT1260['Margin'], DataCSV))
+        #     t[str(i)].start()
+        #     Threads.append(t[str(i)])
+        else:
+            NoSat(Position, SatName, Data[Model], DataCSV)
+    for t in Threads:
+        try:
+            t.join()
+        except:
+            logger.error("Thread already finished")     
+    f.writerows(DataCSV)
+    logger.info("Done")
 
 # Fonction de récupération de l'état IRD
-def IRDstate(Addr, Model, Data, f):
-    DataCSV = []
+def IRDstate(Addr, Model, Data):
+    logger.info("Sending new Query...")
+    #
+    #Faire un each pour chercher la bonne valeur dans Data
+    #
+    if Addr == Data["ird1"]:
+    ird = 'ird ' + str(Addr[2:])
+    sat = 'Sat ' + str(Addr[2:])
+    d = []
     if Model == 'DR5000':
-        Info = {'Position':Data['DR5000Position'],
-            'Name':SNMPget(Addr, Data['DR5000Name']),
+        Info = {'Position':ird,
+            'Name':sat,
             'Addr':Addr,
             'Model':"Ateme DR5000",
             'SvcName':SNMPget(Addr, Data['DR5000SvcName']),
             'Snr':int(SNMPget(Addr, Data['DR5000Snr']))/10,
             'Margin':int(SNMPget(Addr, Data['DR5000Margin']))/10,
             }
-        d = []
-        for key in Info:
-            d.append(Info[key])
-        DataCSV.append(d)
-        f.writerow(DataCSV)
-        return f
+    for key in Info:
+        d.append(Info[key])
+    f = csv.reader(open("fichier_status.csv"), delimiter=';')
+    lines = [l for l in f]
+
+#
+# Réécrire CSV !
+#
+    
     # elif Model == 'TT1260':
 
 # Définition de la commande 'SNMP Get'
@@ -103,30 +120,23 @@ def SNMPget(IPAddr, OID):
     except:
         logger.error("Impossible de récupérer les infos SNMP...")
         state = 'Erreur'
-        return state
+        return state    
 
-
-
-
-
-
-    
-
-# def DR5000state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
-#     Info = {'Position':Position,
-#             'Name':SNMPget(Addr, Name),
-#             'Addr':Addr,
-#             'Model':"Ateme DR5000",
-#             'SvcName':SNMPget(Addr, SvcName),
-#             'Snr':int(SNMPget(Addr, Snr))/10,
-#             'Margin':int(SNMPget(Addr, Margin))/10,
-#             }
-#     d = []
-#     for key in Info:
-#         d.append(Info[key])
-#     print(d)
-#     DataCSV.append(d)
-#     return DataCSV
+def DR5000state(Position, SatName, Data, DataCSV):
+    Info = {'Position':Position,
+            'Name':SatName,
+            'Addr':Data[Position],
+            'Model':"Ateme DR5000",
+            'SvcName':SNMPget(Data[Position], Data['DR5000SvcName']),
+            'Snr':SNMPget(Data[Position], Data['DR5000Snr']),
+            'Margin':SNMPget(Data[Position], Data['DR5000Margin']),
+            }
+    d = []
+    for key in Info:
+        d.append(Info[key])
+    logger.info(d)
+    DataCSV.append(d)
+    return DataCSV
 
 # def RX8200state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
 #     Info = {'Position':Position,
@@ -164,35 +174,19 @@ def SNMPget(IPAddr, OID):
 #     DataCSV.append(d)
 #     return DataCSV
 
-# def RX1290state(Position, Name, Addr, SvcName, Snr, Margin, DataCSV):
-#     Info = {'Position':Position,
-#             'Name':Name,
-#             'Addr':Addr,
-#             'Model':"Ericsson RX1290",
-#             'SvcName':SNMPget(Addr, SvcName),
-#             'Snr':int(SNMPget(Addr, Snr))/100,
-#             'Margin':int(SNMPget(Addr, Margin))/100,
-#             }
-#     d = []
-#     for key in Info:
-#         d.append(Info[key])
-#     print(d)
-#     DataCSV.append(d)
-#     return DataCSV
-
-# def NoSat(Position, SatName, Model, DataCSV):
-#     Info = {'Position':Position,
-#             'Name':SatName,
-#             'Addr':'',
-#             'Model':Model,
-#             'SvcName':'',
-#             'Snr':'',
-#             'Margin':'',
-#             }
-#     d = []
-#     for key in Info:
-#         d.append(Info[key])
-#     print(d)
-#     DataCSV.append(d)
-#     return DataCSV
+def NoSat(Position, SatName, Model, DataCSV):
+    Info = {'Position':Position,
+            'Name':SatName,
+            'Addr':'',
+            'Model':Model,
+            'SvcName':'',
+            'Snr':'',
+            'Margin':'',
+            }
+    d = []
+    for key in Info:
+        d.append(Info[key])
+    logger.info(d)
+    DataCSV.append(d)
+    return DataCSV
 
