@@ -6,22 +6,18 @@ Developeurs : VBNIN + CKAR - IPEchanges.
 Script de relevé des niveaux de réceptions des IRD nodal
 """
 
-# Import des librairies
-import time
+from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
+from pysnmp.carrier.asyncore.dgram import udp
+from logging.handlers import RotatingFileHandler
+from Libraries import PrintException, cbFun
 import logging
+from argparse import ArgumentParser
 import configparser
 import csv
-import threading
-from logging.handlers import RotatingFileHandler
-from argparse import ArgumentParser
-from Libraries import PrintException
-from pysnmp.entity import engine, config
-from pysnmp.carrier.asyncore.dgram import udp
-from pysnmp.entity.rfc3413 import ntfrcv
 
 # Activation du logger principal
 try:
-    handler = RotatingFileHandler('SNMPInfo.log', maxBytes=10000000, backupCount=5)
+    handler = RotatingFileHandler('SNMPReceiver.log', maxBytes=10000000, backupCount=5)
     handler.setFormatter(logging.Formatter('%(asctime)s : %(message)s'))
     logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
     logger = logging.getLogger(__name__)
@@ -30,43 +26,47 @@ except:
     PrintException("Impossible d'initialiser le fichier de logs.")
     exit()
 
-# Create SNMP engine with autogenernated engineID and pre-bound
-# to socket transport dispatcher
-snmpEngine = engine.SnmpEngine()
+# Récupération des variables de démarrage
+parser = ArgumentParser()
+parser.add_argument("-c", "--config", dest="config", help="Préciser le chemin du fichier config.ini")
+args = parser.parse_args()
 
-# Transport setup
-
-# UDP over IPv4, first listening interface/port
-config.addTransport(
-    snmpEngine,
-    udp.domainName + (1,),
-    udp.UdpTransport().openServerMode(('0.0.0.0', 162))
-)
-
-# SNMPv1/2c setup
-
-# SecurityName <-> CommunityName mapping
-config.addV1System(snmpEngine, 'my-area', 'public')
-
-
-# Callback function for receiving notifications
-# noinspection PyUnusedLocal,PyUnusedLocal,PyUnusedLocal
-def cbFun(snmpEngine, stateReference, contextEngineId, contextName,
-          varBinds, cbCtx):
-    print('Notification from ContextEngineId "%s", ContextName "%s"' % (contextEngineId.prettyPrint(),
-                                                                        contextName.prettyPrint()))
-    for name, val in varBinds:
-        print('%s = %s' % (name.prettyPrint(), val.prettyPrint()))
-
-
-# Register SNMP Application at the SNMP engine
-print("Launching SNMP Trap Handler...")
-ntfrcv.NotificationReceiver(snmpEngine, cbFun)
-snmpEngine.transportDispatcher.jobStarted(1)  # this job would never finish
-
-# Run I/O dispatcher which would receive queries and send confirmations
+# Lecture du fichier de Configuration et attribution des variables
 try:
-    snmpEngine.transportDispatcher.runDispatcher()
+    Addresses = {}
+    Data = {}
+    config = configparser.ConfigParser()
+    config.read(args.config)
+    Addresses['DR5000'] = config.get('DR5000', 'Addr')
+    Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
+    Data['DR5000Margin'] = config.get('DR5000', 'OidMargin')
+    Data['DR5000SvcName'] = config.get('DR5000', 'OidServiceName')
+    Addresses['RX8200'] = config.get('RX8200', 'Addr')
+    Data['RX8200Snr'] = config.get('RX8200', 'OidSnr')
+    Data['RX8200Margin'] = config.get('RX8200', 'OidMargin')
+    Data['RX8200SvcName'] = config.get('RX8200', 'OidServiceName')
+    Addresses['TT1260'] = config.get('TT1260', 'Addr')
+    Data['TT1260Snr'] = config.get('TT1260', 'OidSnr')
+    Data['TT1260Margin'] = config.get('TT1260', 'OidMargin')
+    Data['TT1260SvcName'] = config.get('TT1260', 'OidServiceName')
+
 except:
-    snmpEngine.transportDispatcher.closeDispatcher()
+    PrintException("Fichier de configuration invalide ou non précisé.Pour rappel : core.py -c 'emplacement du fichier de configuration'")
+    exit()
+
+# Ouverture du socket IPv4 SNMP
+transportDispatcher = AsyncoreDispatcher()
+transportDispatcher.registerRecvCbFun(cbFun)
+transportDispatcher.registerTransport(
+    udp.domainName, udp.UdpSocketTransport().openServerMode(('0.0.0.0', 162))
+)
+transportDispatcher.jobStarted(1)
+
+try:
+    # Dispatcher will never finish as job#1 never reaches zero
+    logger.info("Initialisation du script...")
+    f = csv.writer(open("fichier_status.csv", "w", newline=''), delimiter = ';')
+    transportDispatcher.runDispatcher()
+except:
+    transportDispatcher.closeDispatcher()
     raise
