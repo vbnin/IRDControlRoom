@@ -34,19 +34,15 @@ args = parser.parse_args()
 
 # Lecture du fichier de Configuration et attribution des variables
 try:
-    Addresses = {}
     Data = {}
     config = configparser.ConfigParser()
     config.read(args.config)
-    Addresses['DR5000'] = config.get('DR5000', 'Addr')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
     Data['DR5000Margin'] = config.get('DR5000', 'OidMargin')
     Data['DR5000SvcName'] = config.get('DR5000', 'OidServiceName')
-    Addresses['RX8200'] = config.get('RX8200', 'Addr')
     Data['RX8200Snr'] = config.get('RX8200', 'OidSnr')
     Data['RX8200Margin'] = config.get('RX8200', 'OidMargin')
     Data['RX8200SvcName'] = config.get('RX8200', 'OidServiceName')
-    Addresses['TT1260'] = config.get('TT1260', 'Addr')
     Data['TT1260Snr'] = config.get('TT1260', 'OidSnr')
     Data['TT1260Margin'] = config.get('TT1260', 'OidMargin')
     Data['TT1260SvcName'] = config.get('TT1260', 'OidServiceName')
@@ -56,7 +52,7 @@ try:
         Data[Position] = config.get('IRD', 'IRD' + str(i))
         Data[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 except:
-    PrintException("Fichier de configuration invalide ou non précisé. "
+    PrintException("Fichier de configuration invalide ou introuvable. "
                    "Pour rappel : core.py -c config.ini")
     exit()
 
@@ -70,12 +66,16 @@ def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
         reqMsg, wholeMsg = decoder.decode(
             wholeMsg, asn1Spec=pMod.Message())
         logger.info('Trap SNMP recu de : ' + str(transportAddress[0]))
-        if transportAddress[0] in Addresses['DR5000']:
-            IRDstate(transportAddress[0], 'DR5000', Data)
-        elif transportAddress[0] in Addresses['TT1260']:
-            IRDstate(transportAddress[0], 'TT1260', Data)
-        elif transportAddress[0] in Addresses['RX8200']:
-            IRDstate(transportAddress[0], 'RX8200', Data)
+        for i in range(1, 36):
+            Position = "ird" + str(i)
+            Model = "type" + str(i)
+            if transportAddress[0] == Data[Position]:
+                IRDstate(Data[Position], Data[Model], Data)
+                return
+            else:
+                pass
+        logger.error("Aucune correspondance trouvée avec la table des IRD !")
+        return
 
 # Ouverture du socket IPv4 SNMP
 transportDispatcher = AsyncoreDispatcher()

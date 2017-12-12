@@ -44,7 +44,7 @@ def Launcher(Data):
         elif Data[Model] == 'TT1260':
             TT1260state(Position, SatName, Data[Position], Data, DataCSV)
         else:
-            NoSat(Position, SatName, Data[Position], Data[Model], DataCSV, Data)
+            NoSat(Position, SatName, Data[Position], Data[Model], DataCSV)
     with open("fichier_status.csv", "w", newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerows(DataCSV)
@@ -78,6 +78,7 @@ def IRDstate(Addr, Model, Data):
             with open("fichier_status.csv", "w", newline='') as f:
                 writer = csv.writer(f, delimiter=';')
                 writer.writerows(lines)
+                logger.info("Fichier CSV mis à jour.")
         else:
             pass
 
@@ -87,7 +88,7 @@ def SNMPget(IPAddr, OID):
         errorIndication, errorStatus, errorIndex, varBinds = next(
             getCmd(SnmpEngine(),
                 CommunityData('private', mpModel=0),
-                UdpTransportTarget((IPAddr, 161), timeout=0.1),
+                UdpTransportTarget((IPAddr, 161), timeout=0.5),
                 ContextData(),
                 ObjectType(ObjectIdentity(OID))))
         if errorIndication or errorStatus:
@@ -157,7 +158,7 @@ def TT1260state(Position, SatName, Addr, Data, DataCSV):
     DataCSV.append(d)
     return DataCSV
 
-def NoSat(Position, SatName, Addr, Model, DataCSV, Data):
+def NoSat(Position, SatName, Addr, Model, DataCSV):
     Info = {'Position':Position,
             'Name':SatName,
             'Addr':Addr,
