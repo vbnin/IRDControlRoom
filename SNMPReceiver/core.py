@@ -6,16 +6,15 @@ Developeurs : VBNIN + CKAR - IPEchanges.
 Script de relevé des niveaux de réceptions des IRD nodal
 """
 
-from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
-from pysnmp.carrier.asyncore.dgram import udp
-from pyasn1.codec.ber import decoder
-from pysnmp.proto import api
-from logging.handlers import RotatingFileHandler
-from Libraries import PrintException, IRDstate, Launcher
 import logging
-from argparse import ArgumentParser
 import configparser
-import csv
+from pysnmp.proto import api
+from pyasn1.codec.ber import decoder
+from pysnmp.carrier.asyncore.dgram import udp
+from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
+from logging.handlers import RotatingFileHandler
+from argparse import ArgumentParser
+from Libraries import PrintException, IRDstate, Launcher
 
 # Activation du logger principal
 try:
@@ -30,7 +29,7 @@ except:
 
 # Récupération des variables de démarrage
 parser = ArgumentParser()
-parser.add_argument("-c", "--config", dest="config", help="Préciser le chemin du fichier config.ini")
+parser.add_argument("-c", "--config", dest="config", help="Fichier config.ini")
 args = parser.parse_args()
 
 # Lecture du fichier de Configuration et attribution des variables
@@ -57,49 +56,41 @@ try:
         Data[Position] = config.get('IRD', 'IRD' + str(i))
         Data[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 except:
-    PrintException("Fichier de configuration invalide ou non précisé.Pour rappel : core.py -c 'emplacement du fichier de configuration'")
+    PrintException("Fichier de configuration invalide ou non précisé. "
+                   "Pour rappel : core.py -c config.ini")
     exit()
 
 # CallBack function for receiving traps
 def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
-    trap = {}
     global Addresses
     global Data
     while wholeMsg:
         msgVer = int(api.decodeMessageVersion(wholeMsg))
         pMod = api.protoModules[msgVer]
         reqMsg, wholeMsg = decoder.decode(
-            wholeMsg, asn1Spec=pMod.Message(),
-        )
-        logger.info('Notification message from ' + str(transportAddress[0]))
-        trap['Addr'] = transportAddress[0]
-        reqPDU = pMod.apiMessage.getPDU(reqMsg)
-        if reqPDU.isSameTypeWith(pMod.TrapPDU()):
-            varBinds = pMod.apiPDU.getVarBinds(reqPDU)
-            for oid, val in varBinds:
-                trap[oid.prettyPrint()] = val.prettyPrint()
-        if trap['Addr'] in Addresses['DR5000']:
-            IRDstate(trap['Addr'], 'DR5000', Data)
-        elif trap['Addr'] in Addresses['TT1260']:
-            IRDstate(trap['Addr'], 'TT1260', Data)
-        elif trap['Addr'] in Addresses['RX8200']:
-            IRDstate(trap['Addr'], 'RX8200', Data)
-    return trap  
+            wholeMsg, asn1Spec=pMod.Message())
+        logger.info('Trap SNMP recu de : ' + str(transportAddress[0]))
+        if transportAddress[0] in Addresses['DR5000']:
+            IRDstate(transportAddress[0], 'DR5000', Data)
+        elif transportAddress[0] in Addresses['TT1260']:
+            IRDstate(transportAddress[0], 'TT1260', Data)
+        elif transportAddress[0] in Addresses['RX8200']:
+            IRDstate(transportAddress[0], 'RX8200', Data)
 
 # Ouverture du socket IPv4 SNMP
 transportDispatcher = AsyncoreDispatcher()
 transportDispatcher.registerRecvCbFun(cbFun)
 transportDispatcher.registerTransport(
-    udp.domainName, udp.UdpSocketTransport().openServerMode(('0.0.0.0', 162))
-)
+    udp.domainName, udp.UdpSocketTransport().openServerMode(('0.0.0.0', 162)))
 transportDispatcher.jobStarted(1)
 
+# Dispatcher will never finish as job#1 never reaches zero
 try:
-    # Dispatcher will never finish as job#1 never reaches zero
-    #f = csv.writer(open("fichier_status.csv", "a", newline=''), delimiter = ';')
     logger.info("Initialisation du script...")
     Launcher(Data)
+    logger.info("Initialisation terminée, écoute des traps sur le port 162...")
     transportDispatcher.runDispatcher()
 except:
     transportDispatcher.closeDispatcher()
+    logger.info("Fin du script.")
     raise

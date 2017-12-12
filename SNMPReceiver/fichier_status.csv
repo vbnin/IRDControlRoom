@@ -1,5 +1,5 @@
-ird4;SAT-4;;TT1260;;;
-ird5;SAT-5;;TT1260;;;
-ird1;SAT-1;10.75.216.4;Ateme DR5000;;0;0
-ird3;SAT-3;10.191.5.3;Ateme DR5000;Erreur;Erreur;Erreur
-ird2;SAT-2;10.191.2.2;Ateme DR5000;Erreur;Erreur;Erreur
+ird1;SAT-1;10.75.216.4;Ateme DR5000;EUTELSAT 8W A M6-05 CH1 RM;14.7;4.2
+ird2;SAT-2;10.191.2.2;Ateme DR5000;0;0.0;0.0
+ird3;SAT-3;10.191.5.3;Ateme DR5000;0;0.0;0.0
+ird4;SAT-4;10.191.2.4;Tandberg TT1260;0;0.0;0.0
+ird5;SAT-5;10.191.5.5;Tandberg TT1260;0;0.0;0.0
