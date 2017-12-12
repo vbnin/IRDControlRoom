@@ -33,7 +33,7 @@ def PrintException(msg):
 # Définition de la fonction de remplissage du fichier CSV au démarrage
 def Launcher(Data):
     DataCSV = []
-    for i in range(1, 6):
+    for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "type" + str(i)
         SatName = "SAT-" + str(i)
