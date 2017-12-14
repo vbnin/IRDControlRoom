@@ -58,7 +58,6 @@ except:
 
 # CallBack function for receiving traps
 def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
-    global Addresses
     global Data
     while wholeMsg:
         msgVer = int(api.decodeMessageVersion(wholeMsg))
