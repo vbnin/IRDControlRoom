@@ -9,8 +9,6 @@ Script de relevé des niveaux de réceptions des IRD nodal
 import logging
 import configparser
 import sys
-import threading
-import subprocess
 from pysnmp.proto import api
 from pyasn1.codec.ber import decoder
 from pysnmp.carrier.asyncore.dgram import udp
@@ -18,7 +16,7 @@ from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from logging.handlers import RotatingFileHandler
 from argparse import ArgumentParser
 from Libraries import PrintException, IRDstate, Launcher, SatPulse
-from time import sleep
+from multiprocessing import Process
 
 # Activation du logger principal
 try:
@@ -57,16 +55,41 @@ except:
     PrintException("Fichier de configuration invalide ou introuvable. "
                    "Pour rappel : core.py -c config.ini")
     exit()
+    
+# CallBack function for receiving traps
+def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
+    global Data
+    while wholeMsg:
+        msgVer = int(api.decodeMessageVersion(wholeMsg))
+        pMod = api.protoModules[msgVer]
+        reqMsg, wholeMsg = decoder.decode(
+            wholeMsg, asn1Spec=pMod.Message())
+        logger.info('Trap SNMP recu de : ' + str(transportAddress[0]))
+        for i in range(1, 36):
+            Position = "ird" + str(i)
+            Model = "type" + str(i)
+            if transportAddress[0] == Data[Position]:
+                logger.info("Envoi d'une requete d'état sur le port 161.")
+                IRDstate(Data[Position], Data[Model], Data)
+                return
+            else:
+                pass
+        logger.error("Aucune correspondance trouvée avec la table des IRD !")
+        return
 
-if __name__ == '__main__':
-    try:
-        logger.info("Initialisation du script...")
-        Launcher(Data)
-        logger.info("Lancement de la boucle de vérification")
-        while True:
-            logger.info(Data["Locked"])
-            SatPulse(Data)
-            sleep(5)
-    except:
-        logger.info("Fin du script.")
-        raise
+# Ouverture du socket IPv4 SNMP
+transportDispatcher = AsyncoreDispatcher()
+transportDispatcher.registerRecvCbFun(cbFun)
+transportDispatcher.registerTransport(
+    udp.domainName, udp.UdpSocketTransport().openServerMode(('0.0.0.0', 162)))
+transportDispatcher.jobStarted(1)
+
+# Dispatcher will never finish as job#1 never reaches zero
+try:
+    logger.info("Initialisation du script de CallBack...")
+    transportDispatcher.runDispatcher()
+    logger.info("Initialisation terminée, écoute des traps sur le port 162...")
+except:
+    transportDispatcher.closeDispatcher()
+    logger.info("Fin du script.")
+    raise
