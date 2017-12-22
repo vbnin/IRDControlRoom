@@ -9,6 +9,7 @@ Script de relevé des niveaux de réceptions des IRD nodal
 import logging
 import configparser
 import sys
+import os
 from pysnmp.proto import api
 from pyasn1.codec.ber import decoder
 from pysnmp.carrier.asyncore.dgram import udp
@@ -33,8 +34,10 @@ except:
 # Lecture du fichier de Configuration et attribution des variables
 try:
     Data = {}
+    ConfFile = r"\SNMPReceiver\config.ini"
+    Path = os.getcwd()+ConfFile
     config = configparser.SafeConfigParser()
-    config.read('config.ini')
+    config.read(Path)
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
@@ -52,8 +55,7 @@ try:
         Data[Position] = config.get('IRD', 'IRD' + str(i))
         Data[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 except:
-    PrintException("Fichier de configuration invalide ou introuvable. "
-                   "Pour rappel : core.py -c config.ini")
+    PrintException("Fichier de configuration 'config.ini' invalide ou introuvable. ")
     exit()
     
 # CallBack function for receiving traps

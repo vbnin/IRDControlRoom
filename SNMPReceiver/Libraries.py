@@ -10,8 +10,6 @@ import re
 import csv
 import sys
 import logging
-import threading
-import subprocess
 from time import sleep
 from logging.handlers import RotatingFileHandler
 from pysnmp.hlapi import *

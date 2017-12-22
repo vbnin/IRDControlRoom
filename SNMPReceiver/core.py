@@ -8,16 +8,10 @@ Script de relevé des niveaux de réceptions des IRD nodal
 
 import logging
 import configparser
+import os
 import sys
-import threading
-import subprocess
-from pysnmp.proto import api
-from pyasn1.codec.ber import decoder
-from pysnmp.carrier.asyncore.dgram import udp
-from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from logging.handlers import RotatingFileHandler
-from argparse import ArgumentParser
-from Libraries import PrintException, IRDstate, Launcher, SatPulse
+from Libraries import PrintException, Launcher, SatPulse
 from time import sleep
 
 # Activation du logger principal
@@ -35,8 +29,10 @@ except:
 # Lecture du fichier de Configuration et attribution des variables
 try:
     Data = {}
+    ConfFile = r"\SNMPReceiver\config.ini"
+    Path = os.getcwd()+ConfFile
     config = configparser.SafeConfigParser()
-    config.read('config.ini')
+    config.read(Path)
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
@@ -54,8 +50,7 @@ try:
         Data[Position] = config.get('IRD', 'IRD' + str(i))
         Data[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 except:
-    PrintException("Fichier de configuration invalide ou introuvable. "
-                   "Pour rappel : core.py -c config.ini")
+    PrintException("Fichier de configuration 'config.ini' invalide ou introuvable.")
     exit()
 
 if __name__ == '__main__':
@@ -66,7 +61,7 @@ if __name__ == '__main__':
         while True:
             logger.info(Data["Locked"])
             SatPulse(Data)
-            sleep(5)
+            sleep(4)
     except:
         logger.info("Fin du script.")
         raise
