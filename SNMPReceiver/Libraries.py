@@ -16,7 +16,7 @@ from pysnmp.hlapi import *
 from pysnmp.carrier.asyncore.dgram import udp, unix
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
-from multiprocessing import Process, Pool
+import threading
 
 # Activation du logger
 LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
@@ -35,52 +35,52 @@ def PrintException(msg):
 # Définition de la fonction de remplissage du fichier CSV au démarrage
 def Launcher(Data):
     DataCSV = []
-    processes = []
+    threads = []
     for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "type" + str(i)
         SatName = "SAT-" + str(i)
-        p = Process(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
-        processes.append(p)
+        p = threading.Thread(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
+        threads.append(p)
         p.start()
-    for p in processes:
+    for p in threads:
         p.join()
     with open(Data['CSV'], "w", newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerows(DataCSV)
+        logger.info(Data["Locked"])
         logger.info("Fichier CSV mis à jour par Launcher.")
 
 # Fonction de récupération d'état par script périodique
 def SatPulse(Data):
     DataCSV = []
-    processes = []
-    for Addr in Data["Locked"]:
+    threads = []
+    for Pos in Data["Locked"]:
         for i in range(1, 36):
             Position = "ird" + str(i)
             Model = "type" + str(i)
             SatName = "SAT-" + str(i)
-            if Addr == Data[Position]:
-                p = Process(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
-                processes.append(p)
+            if Pos == Position:
+                p = threading.Thread(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
+                threads.append(p)
                 p.start()
             else:
                 pass
-    for p in processes:
+    for p in threads:
         p.join()
-    for Addr in Data["Locked"]:
-        with open(Data['CSV']) as f:
-            reader = csv.reader(f, delimiter=';')
-            lines = [l for l in reader]
-            for item in lines:
-                try:
-                    item.index(Addr)
-                    lines.remove(item)
-                except:
-                    pass
     with open(Data['CSV']) as f:
         reader = csv.reader(f, delimiter=';')
         lines = [l for l in reader]
-        lines = lines + DataCSV
+        for item in lines:
+            for pos in Data["Locked"]:
+                if pos in item:
+                    lines.remove(item)
+                    logger.info('item removed')
+                else:
+                    logger.info('no match')
+                    pass
+    logger.info(DataCSV)
+    lines = lines + DataCSV
     with open(Data['CSV'], "w", newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerows(lines)
@@ -115,10 +115,8 @@ def IRDstate(Addr, Model, Data):
 def IRDInfo(Position, SatName, Addr, Model, Data, DataCSV):
     logger.info("1 - Collecte des Infos")
     Info = [Position, SatName, Addr, Model]
-    logger.info(Info)
     if Model == "DR5000":
         Snmp = SNMPget(Addr, Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
-        logger.info(Snmp)
         Info = Info + Snmp
         Info[5] = int(Info[5])/10
         Info[6] = int(Info[6])/10
@@ -141,17 +139,16 @@ def IRDInfo(Position, SatName, Addr, Model, Data, DataCSV):
     else:
         Info = Info + ['N/A', 'N/A', 0]
     logger.info("2 - Ajout du statut Locked")
-    if Info[6] > 0 and Addr in Data["Locked"]:
+    if Info[6] > 0 and Position in Data["Locked"]:
         Info.append("Locked")
-    elif Info[6] > 0 and Addr not in Data["Locked"]:
+    elif Info[6] > 0 and Position not in Data["Locked"]:
         Info.append("Locked")
-        Data["Locked"].append(Addr)
-    elif Info[6] <= 0 and Addr in Data["Locked"]:
+        Data["Locked"].append(Position)
+    elif Info[6] <= 0 and Position in Data["Locked"]:
         Info.append("Unlocked")
-        Data["Locked"].remove(Addr)
+        Data["Locked"].remove(Position)
     else:
         Info.append("Unlocked")
-    logger.info(Info)
     DataCSV.append(Info)
     return DataCSV
 

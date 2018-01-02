@@ -34,10 +34,8 @@ except:
 # Lecture du fichier de Configuration et attribution des variables
 try:
     Data = {}
-    ConfFile = r"\SNMPReceiver\config.ini"
-    Path = os.getcwd()+ConfFile
     config = configparser.SafeConfigParser()
-    config.read(Path)
+    config.read('/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
