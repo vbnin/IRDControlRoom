@@ -11,12 +11,14 @@ import csv
 import sys
 import logging
 from time import sleep
+from random import randint
 from logging.handlers import RotatingFileHandler
 from pysnmp.hlapi import *
 from pysnmp.carrier.asyncore.dgram import udp, unix
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
-import threading
+from multiprocessing import Process, Pool
+from queue import Queue
 
 # Activation du logger
 LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
@@ -35,93 +37,67 @@ def PrintException(msg):
 # Définition de la fonction de remplissage du fichier CSV au démarrage
 def Launcher(Data):
     DataCSV = []
-    threads = []
-    for i in range(1, 36):
-        Position = "ird" + str(i)
-        Model = "type" + str(i)
-        SatName = "SAT-" + str(i)
-        p = threading.Thread(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
-        threads.append(p)
-        p.start()
-    for p in threads:
-        p.join()
-    with open(Data['CSV'], "w", newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerows(DataCSV)
-        logger.info(Data["Locked"])
-        logger.info("Fichier CSV mis à jour par Launcher.")
+    pool = Pool()
+    i = range(1, 36)
+    Params = zip(Data, i)
+    p = pool.map(IRDInfo1, Params)
+    logger.info(p)
+    # for i in range(1, 36):
+
+        
 
 # Fonction de récupération d'état par script périodique
 def SatPulse(Data):
-    DataCSV = []
-    threads = []
-    for Pos in Data["Locked"]:
-        for i in range(1, 36):
-            Position = "ird" + str(i)
-            Model = "type" + str(i)
-            SatName = "SAT-" + str(i)
-            if Pos == Position:
-                p = threading.Thread(target=IRDInfo, args=(Position, SatName, Data[Position], Data[Model], Data, DataCSV))
-                threads.append(p)
-                p.start()
-            else:
-                pass
-    for p in threads:
-        p.join()
-    with open(Data['CSV']) as f:
-        reader = csv.reader(f, delimiter=';')
-        lines = [l for l in reader]
+    while True:
+        LockList = []
+        processes = []
+        logger.info("Démarrage SatPulse")
+        with open(Data['CSV']) as f:
+            reader = csv.reader(f, delimiter=';')
+            lines = [l for l in reader]
         for item in lines:
-            for pos in Data["Locked"]:
-                if pos in item:
-                    lines.remove(item)
-                    logger.info('item removed')
+            try:
+                if item[7] == "Locked":
+                    LockList.append(item)
+                    #p = Process(target=IRDInfo2, args=(item[0], item[1], item[2], item[3], Data))
+                    #processes.append(p)
+                    #p.start()
+                    #logger.info("Lancement process pour : " + item[0])
                 else:
-                    logger.info('no match')
-                    pass
-    logger.info(DataCSV)
-    lines = lines + DataCSV
-    with open(Data['CSV'], "w", newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerows(lines)
-        logger.info("Fichier CSV mis à jour par SatPulse.")
+                    continue
+            except:
+                logger.error("Erreur !!!")
+        IRDInfo2(LockList, Data)
+        #for p in processes:
+            #p.join()    
 
 # Fonction de récupération d'état via CallBack Function
 def IRDstate(Addr, Model, Data):
-    DataCSV = []
     for i in range(1, 36):
         Position = "ird" + str(i)
         SatName = "SAT-" + str(i)
         if Addr == Data[Position]:
-            IRDInfo(Position, SatName, Data[Position], Data[Model], Data, DataCSV)
+            IRDInfo2(Position, SatName, Data[Position], Data[Model], Data)
         else:
             pass
-    with open(Data['CSV']) as f:
-        reader = csv.reader(f, delimiter=';')
-        lines = [l for l in reader]
-        for item in lines:
-            try:
-                item.index(Position)
-                lines.remove(item)
-                lines.append(DataCSV[0])
-            except:
-                pass
-    with open(Data['CSV'], "w", newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerows(lines)
-        logger.info("Fichier CSV mis à jour par IRDstate.")
         
 # Fonction de collection des informations par SNMP
-def IRDInfo(Position, SatName, Addr, Model, Data, DataCSV):
+# def IRDInfo1(Position, SatName, Addr, Model, Data):
+def IRDInfo1(Params):
+    logger.info(Params)
+    Data, i = Params
+    Position = "ird" + str(i)
+    Model = "type" + str(i)
+    SatName = "SAT-" + str(i)
     logger.info("1 - Collecte des Infos")
-    Info = [Position, SatName, Addr, Model]
+    Info = [Position, SatName, Data[Position], Data[Model]]
     if Model == "DR5000":
-        Snmp = SNMPget(Addr, Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
+        Snmp = SNMPget(Data[Position], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/10
         Info[6] = int(Info[6])/10
     elif Model == "RX8200":
-        Snmp = SNMPget(Addr, Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
+        Snmp = SNMPget(Data[Position], Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
         Info = Info + Snmp
         if Info[4][:7] == "No Such":
             Info[4:6] = ['', 0, 0]
@@ -130,7 +106,7 @@ def IRDInfo(Position, SatName, Addr, Model, Data, DataCSV):
             Info[5] = Info[5][:4]
             Info[6] = Info[6][2:6]
     elif Model == "TT1260":
-        Snmp = SNMPget(Addr, Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
+        Snmp = SNMPget(Data[Position], Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/100
         Info[6] = int(Info[6])/100
@@ -139,18 +115,68 @@ def IRDInfo(Position, SatName, Addr, Model, Data, DataCSV):
     else:
         Info = Info + ['N/A', 'N/A', 0]
     logger.info("2 - Ajout du statut Locked")
-    if Info[6] > 0 and Position in Data["Locked"]:
+    if float(Info[6]) > 0.1:
         Info.append("Locked")
-    elif Info[6] > 0 and Position not in Data["Locked"]:
-        Info.append("Locked")
-        Data["Locked"].append(Position)
-    elif Info[6] <= 0 and Position in Data["Locked"]:
-        Info.append("Unlocked")
-        Data["Locked"].remove(Position)
     else:
         Info.append("Unlocked")
-    DataCSV.append(Info)
-    return DataCSV
+    return Info
+    # logger.info("3 - Ajout de la ligne au fichier CSV")
+    # with open(Data['CSV'], "a", newline='') as f:
+    #     writer = csv.writer(f, delimiter=';')
+    #     writer.writerow(Info)
+    # logger.info("4 - Fichier CSV mis à jour par IRDInfo1")
+    
+def IRDInfo2(LockList, Data):
+    DataCSV = []
+    for item in LockList:
+        logger.info("1 - Collecte des Infos")
+        Model = item[3]
+        Addr = item[2]
+        Info = [item[0], item[1], item[2], item[3]]
+        if Model == "DR5000":
+            Snmp = SNMPget(Addr, Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
+            Info = Info + Snmp
+            Info[5] = int(Info[5])/10
+            Info[6] = int(Info[6])/10
+        elif Model == "RX8200":
+            Snmp = SNMPget(Addr, Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
+            Info = Info + Snmp
+            if Info[4][:7] == "No Such":
+                Info[4:6] = ['', 0, 0]
+                Info.remove(Info[7])
+            else:
+                Info[5] = Info[5][:4]
+                Info[6] = Info[6][2:6]
+        elif Model == "TT1260":
+            Snmp = SNMPget(Addr, Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
+            Info = Info + Snmp
+            Info[5] = int(Info[5])/100
+            Info[6] = int(Info[6])/100
+            if Info[6] == 100.0:
+                Info[6] = 0.0
+        else:
+            Info = Info + ['N/A', 'N/A', 0]
+        logger.info("2 - Ajout du statut Locked")
+        if float(Info[6]) > 0.1:
+            Info.append("Locked")
+        else:
+            Info.append("Unlocked")
+        DataCSV.append(Info)
+    with open(Data['CSV']) as f:
+        reader = csv.reader(f, delimiter=';')
+        lines = [l for l in reader]
+    for item in lines:
+        for Info in DataCSV:
+            if Info[0] == item[0]:
+                lines.remove(item)
+            else:
+                pass
+    lines = lines + DataCSV
+    logger.info("4 - Ecriture des Informations")
+    with open(Data['CSV'], "w", newline='') as f:
+        writer = csv.writer(f, delimiter=';')
+        writer.writerows(lines)
+    logger.info("5 - Fichier CSV mis à jour par IRDInfo2")
 
 # Définition de la commande 'SNMP Get'
 def SNMPget(IPAddr, OID1, OID2, OID3):

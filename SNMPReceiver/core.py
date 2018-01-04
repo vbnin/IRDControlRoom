@@ -10,6 +10,7 @@ import logging
 import configparser
 import os
 import sys
+import csv
 from logging.handlers import RotatingFileHandler
 from Libraries import PrintException, Launcher, SatPulse
 from time import sleep
@@ -30,7 +31,7 @@ except:
 try:
     Data = {}
     config = configparser.SafeConfigParser()
-    config.read('/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
+    config.read('d:/_DATA Documents/Python/IRDControlRoom/SNMPReceiver/config.ini' if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
@@ -54,12 +55,12 @@ except:
 if __name__ == '__main__':
     try:
         logger.info("Initialisation du script...")
+        with open(Data['CSV'], "w", newline='') as f:
+            writer = csv.writer(f, delimiter=';')
+            writer.writerows('')
         Launcher(Data)
         logger.info("Lancement de la boucle de vérification")
-        while True:
-            logger.info(Data["Locked"])
-            SatPulse(Data)
-            sleep(4)
+        SatPulse(Data)
     except:
         logger.info("Fin du script.")
         raise
