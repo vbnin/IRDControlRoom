@@ -8,12 +8,14 @@ Script de relevé des niveaux de réceptions des IRD nodal
 
 import logging
 import configparser
-import os
 import sys
 import csv
+import os
+import time
+import subprocess
 from logging.handlers import RotatingFileHandler
-from Libraries import PrintException, Launcher, SatPulse
-from time import sleep
+from Libraries import PrintException, IRDInfo1, IRDInfo2
+from multiprocessing import Process, Queue
 
 # Activation du logger principal
 try:
@@ -31,7 +33,7 @@ except:
 try:
     Data = {}
     config = configparser.SafeConfigParser()
-    config.read('d:/_DATA Documents/Python/IRDControlRoom/SNMPReceiver/config.ini' if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
+    config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
@@ -52,13 +54,69 @@ except:
     PrintException("Fichier de configuration 'config.ini' invalide ou introuvable.")
     exit()
 
+def Launcher(Data):
+    queue = Queue()
+    plist = [Process(target=IRDInfo1, args=(i, Data, queue)) for i in range(1, 36)]
+    for p in plist:
+        p.start()
+    for p in plist:
+        p.join()
+    DataCSV = [queue.get() for p in plist]
+    with open(Data['CSV'], "w", newline='') as f:
+        writer = csv.writer(f, delimiter=';')
+        writer.writerows(DataCSV)
+    logger.info("Fichier CSV mis à jour par Launcher.")
+
+# Fonction de récupération d'état par script périodique
+def SatPulse(Data):
+    while True:
+        logger.info("Démarrage SatPulse")
+        queue = Queue()
+        LockList = []
+        plist = []
+        with open(Data['CSV']) as f:
+            reader = csv.reader(f, delimiter=';')
+            lines = [l for l in reader]
+        for item in lines:
+            try:
+                if item[7] == "Locked":
+                    plist.append(Process(target=IRDInfo2, args=(item, Data, queue)))
+                else:
+                    pass
+            except:
+                logger.error("Erreur, statut Locked non trouvé !!!")
+        if plist == []:
+            logger.info('No active IRD')
+            time.sleep(1)
+        else:
+            for p in plist:
+                p.start()
+            for p in plist:
+                p.join()
+            DataCSV = [queue.get() for p in plist]
+            with open(Data['CSV']) as f:
+                reader = csv.reader(f, delimiter=';')
+                lines = [l for l in reader]
+            for item in lines:
+                for Info in DataCSV:
+                    if Info[0] == item[0]:
+                        lines.remove(item)
+                    else:
+                        pass
+            lines = lines + DataCSV
+            logger.info("4 - Ecriture des Informations")
+            with open(Data['CSV'], "w", newline='') as f:
+                writer = csv.writer(f, delimiter=';')
+                writer.writerows(lines)
+            logger.info("5 - Fichier CSV mis à jour par SatPulse")
+            time.sleep(1)
+
 if __name__ == '__main__':
     try:
         logger.info("Initialisation du script...")
-        with open(Data['CSV'], "w", newline='') as f:
-            writer = csv.writer(f, delimiter=';')
-            writer.writerows('')
+        CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
         Launcher(Data)
+        time.sleep(1)
         logger.info("Lancement de la boucle de vérification")
         SatPulse(Data)
     except:

@@ -10,14 +10,14 @@ import logging
 import configparser
 import sys
 import os
+import csv
 from pysnmp.proto import api
 from pyasn1.codec.ber import decoder
 from pysnmp.carrier.asyncore.dgram import udp
 from pysnmp.carrier.asyncore.dispatch import AsyncoreDispatcher
 from logging.handlers import RotatingFileHandler
 from argparse import ArgumentParser
-from Libraries import PrintException, IRDstate, Launcher, SatPulse
-from multiprocessing import Process
+from Libraries import PrintException, IRDInfo3
 
 # Activation du logger principal
 try:
@@ -35,7 +35,7 @@ except:
 try:
     Data = {}
     config = configparser.SafeConfigParser()
-    config.read('/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
+    config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
     Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
@@ -70,7 +70,7 @@ def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             Model = "type" + str(i)
             if transportAddress[0] == Data[Position]:
                 logger.info("Envoi d'une requete d'état sur le port 161.")
-                IRDstate(Data[Position], Data[Model], Data)
+                IRDInfo3(i, Data)
                 return
             else:
                 pass
@@ -86,10 +86,9 @@ transportDispatcher.jobStarted(1)
 
 # Dispatcher will never finish as job#1 never reaches zero
 try:
-    logger.info("Initialisation du script de CallBack...")
+    logger.info("Initialisation du script de CallBack, écoute des traps sur le port 162...")
     transportDispatcher.runDispatcher()
-    logger.info("Initialisation terminée, écoute des traps sur le port 162...")
 except:
     transportDispatcher.closeDispatcher()
-    logger.info("Fin du script.")
+    logger.info("Fin du script de CallBack.")
     raise
