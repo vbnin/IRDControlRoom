@@ -54,7 +54,7 @@ except:
     PrintException("Fichier de configuration 'config.ini' invalide ou introuvable.")
     exit()
 
-def Launcher(Data):
+def InitCSV(Data):
     queue = Queue()
     plist = [Process(target=IRDInfo1, args=(i, Data, queue)) for i in range(1, 36)]
     for p in plist:
@@ -62,15 +62,16 @@ def Launcher(Data):
     for p in plist:
         p.join()
     DataCSV = [queue.get() for p in plist]
+    logger.info(DataCSV)
     with open(Data['CSV'], "w", newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerows(DataCSV)
-    logger.info("Fichier CSV mis à jour par Launcher.")
+    logger.info("Fichier CSV mis à jour par InitCSV.")
 
 # Fonction de récupération d'état par script périodique
-def SatPulse(Data):
+def IRDLockLoop(Data):
     while True:
-        logger.info("Démarrage SatPulse")
+        logger.info("Démarrage IRDLockLoop...")
         queue = Queue()
         LockList = []
         plist = []
@@ -108,17 +109,17 @@ def SatPulse(Data):
             with open(Data['CSV'], "w", newline='') as f:
                 writer = csv.writer(f, delimiter=';')
                 writer.writerows(lines)
-            logger.info("5 - Fichier CSV mis à jour par SatPulse")
+            logger.info("5 - Fichier CSV mis à jour par IRDLockLoop")
             time.sleep(1)
 
 if __name__ == '__main__':
     try:
         logger.info("Initialisation du script...")
-        CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
-        Launcher(Data)
+        # CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
+        InitCSV(Data)
         time.sleep(1)
         logger.info("Lancement de la boucle de vérification")
-        SatPulse(Data)
+        IRDLockLoop(Data)
     except:
         logger.info("Fin du script.")
         raise

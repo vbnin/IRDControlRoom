@@ -32,20 +32,20 @@ def PrintException(msg):
     print("*" * 40)
     print(msg)
     print("*" * 40)
-        
+
 # Fonction de collection des informations par SNMP
 def IRDInfo1(i, Data, queue):
     Position = "ird" + str(i)
     Model = "type" + str(i)
     SatName = "SAT-" + str(i)
-    logger.info("1 - Collecte des Infos")
+    logger.info("1 - Collecte des Infos pour " + SatName)
     Info = [Position, SatName, Data[Position], Data[Model]]
-    if Model == "DR5000":
+    if Data[Model] == "DR5000":
         Snmp = SNMPget(Data[Position], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/10
         Info[6] = int(Info[6])/10
-    elif Model == "RX8200":
+    elif Data[Model] == "RX8200":
         Snmp = SNMPget(Data[Position], Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
         Info = Info + Snmp
         if Info[4][:7] == "No Such":
@@ -57,7 +57,8 @@ def IRDInfo1(i, Data, queue):
                 # Info[6] = Info[6][2:6]
             except:
                 Info[5:6] = [0, 0]
-    elif Model == "TT1260":
+                Info.remove(Info[7])
+    elif Data[Model] == "TT1260":
         Snmp = SNMPget(Data[Position], Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/100
@@ -121,12 +122,12 @@ def IRDInfo3(i, Data):
     SatName = "SAT-" + str(i)
     logger.info("1 - Collecte des Infos")
     Info = [Position, SatName, Data[Position], Data[Model]]
-    if Model == "DR5000":
+    if Data[Model] == "DR5000":
         Snmp = SNMPget(Data[Position], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/10
         Info[6] = int(Info[6])/10
-    elif Model == "RX8200":
+    elif Data[Model] == "RX8200":
         Snmp = SNMPget(Data[Position], Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
         Info = Info + Snmp
         if Info[4][:7] == "No Such":
@@ -138,7 +139,7 @@ def IRDInfo3(i, Data):
                 # Info[6] = Info[6][2:6]
             except:
                 Info[5:6] = [0, 0]
-    elif Model == "TT1260":
+    elif Data[Model] == "TT1260":
         Snmp = SNMPget(Data[Position], Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
         Info = Info + Snmp
         Info[5] = int(Info[5])/100
