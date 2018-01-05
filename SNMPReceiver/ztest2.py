@@ -7,26 +7,42 @@ Script de relevé des niveaux de réceptions des IRD nodal
 """
 
 import logging
-import configparser
 import sys
 import csv
-import os
 import time
 import re
 from logging.handlers import RotatingFileHandler
-from multiprocessing import Process, Queue
 from pysnmp.hlapi import *
 from pysnmp.carrier.asyncore.dgram import udp, unix
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
 
+# Activation du logger
+LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
+handler = RotatingFileHandler(LogPath, maxBytes=10000000, backupCount=5)
+handler.setFormatter(logging.Formatter('%(asctime)s : %(message)s'))
+logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
+logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+
+# Fonction de lancement des Process et écriture du CSV
+def CheckLoop(DataDict):
+    while True:
+        DataCSV = []
+        for i in range(1, 36):
+            DataCSV.append(IRDInfo(i, DataDict))
+        with open(DataDict['CSV'], "w", newline='') as f:
+            writer = csv.writer(f, delimiter=';')
+            writer.writerows(DataCSV)
+        time.sleep(0.02)
+        logger.info("Fichier CSV mis à jour par InitCSV.")
+
 # Fonction de collection des informations par SNMP
-def IRDInfo1(i, Data):
-    print("Launching IRDInfo1")
+def IRDInfo(i, Data):
     Position = "ird" + str(i)
     Model = "model" + str(i)
     SatName = "SAT-" + str(i)
-    print("1 - Collecte des Infos pour " + SatName)
+    logger.info("Collecte des Infos pour " + SatName)
     Info = [Position, SatName, Data[Position], Data[Model]]
     if Data[Model] == "DR5000":
         Snmp = SNMPget(Data[Position], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
@@ -42,7 +58,6 @@ def IRDInfo1(i, Data):
         else:
             try:
                 Info[5:6] = [Info[5][:4], Info[6][2:6]]
-                # Info[6] = Info[6][2:6]
             except:
                 Info[5:6] = [0, 0]
                 Info.remove(Info[7])
@@ -55,11 +70,6 @@ def IRDInfo1(i, Data):
             Info[6] = 0.0
     else:
         Info = Info + ['N/A', 'N/A', 0]
-    # if float(Info[6]) > 0.1:
-    #     Info.append("Locked")
-    # else:
-    #     Info.append("Unlocked")
-    # queue.put(Info)
     return Info
 
 # Définition de la commande 'SNMP Get'
@@ -75,7 +85,7 @@ def SNMPget(IPAddr, OID1, OID2, OID3):
                 ObjectType(ObjectIdentity(OID2)),
                 ObjectType(ObjectIdentity(OID3))))
         if errorIndication or errorStatus:
-            print("No SNMP response before timeout")
+            logger.error("No SNMP response before timeout")
             snmp = ['', 0, 0]
             return snmp
         else:
@@ -85,6 +95,6 @@ def SNMPget(IPAddr, OID1, OID2, OID3):
                 snmp.append(state)
             return snmp
     except:
-        print("Impossible de récupérer les infos SNMP...")
+        logger.error("Impossible de récupérer les infos SNMP...")
         snmp = ['', 0, 0]
         return snmp

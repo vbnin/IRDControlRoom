@@ -117,10 +117,8 @@ if __name__ == '__main__':
     try:
         logger.info("Initialisation du script...")
         # CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
-        while True:
-            InitCSV(Data)
-            for i in range(4):
-                IRDLockLoop(Data)
+        InitCSV(Data)
+        IRDLockLoop(Data)
     except:
         logger.info("Fin du script.")
         raise
