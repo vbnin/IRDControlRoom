@@ -10,8 +10,6 @@ import re
 import csv
 import sys
 import logging
-from time import sleep
-from random import randint
 from logging.handlers import RotatingFileHandler
 from pysnmp.hlapi import *
 from pysnmp.carrier.asyncore.dgram import udp, unix
@@ -67,7 +65,6 @@ def IRDInfo1(i, Data, queue):
             Info[6] = 0.0
     else:
         Info = Info + ['N/A', 'N/A', 0]
-    logger.info("2 - Ajout du statut Locked")
     if float(Info[6]) > 0.1:
         Info.append("Locked")
     else:
@@ -76,9 +73,9 @@ def IRDInfo1(i, Data, queue):
     return Info
     
 def IRDInfo2(item, Data, queue):
-    logger.info("1 - Collecte des Infos")
     Model = item[3]
     Addr = item[2]
+    logger.info("1 - Collecte des Infos pour " + item[1])
     Info = [item[0], item[1], item[2], item[3]]
     if Model == "DR5000":
         Snmp = SNMPget(Addr, Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])
@@ -107,7 +104,6 @@ def IRDInfo2(item, Data, queue):
             Info[6] = 0.0
     else:
         Info = Info + ['N/A', 'N/A', 0]
-    logger.info("2 - Ajout du statut Locked")
     if float(Info[6]) > 0.1:
         Info.append("Locked")
     else:
@@ -120,7 +116,7 @@ def IRDInfo3(i, Data):
     Position = "ird" + str(i)
     Model = "type" + str(i)
     SatName = "SAT-" + str(i)
-    logger.info("1 - Collecte des Infos")
+    logger.info("1 - Collecte des Infos pour " + SatName)
     Info = [Position, SatName, Data[Position], Data[Model]]
     if Data[Model] == "DR5000":
         Snmp = SNMPget(Data[Position], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin'])

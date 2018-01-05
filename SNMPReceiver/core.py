@@ -66,60 +66,61 @@ def InitCSV(Data):
     with open(Data['CSV'], "w", newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerows(DataCSV)
+    time.sleep(0.01)
     logger.info("Fichier CSV mis à jour par InitCSV.")
+    return
 
 # Fonction de récupération d'état par script périodique
 def IRDLockLoop(Data):
-    while True:
-        logger.info("Démarrage IRDLockLoop...")
-        queue = Queue()
-        LockList = []
-        plist = []
+    queue = Queue()
+    LockList = []
+    plist = []
+    with open(Data['CSV']) as f:
+        reader = csv.reader(f, delimiter=';')
+        lines = [l for l in reader]
+    for item in lines:
+        try:
+            if item[7] == "Locked":
+                plist.append(Process(target=IRDInfo2, args=(item, Data, queue)))
+            else:
+                pass
+        except:
+            logger.error("Erreur, statut Locked non trouvé !!!")
+    if plist == []:
+        logger.info('No active IRD')
+        time.sleep(0.01)
+        return
+    else:
+        for p in plist:
+            p.start()
+        for p in plist:
+            p.join()
+        DataCSV = [queue.get() for p in plist]
         with open(Data['CSV']) as f:
             reader = csv.reader(f, delimiter=';')
             lines = [l for l in reader]
         for item in lines:
-            try:
-                if item[7] == "Locked":
-                    plist.append(Process(target=IRDInfo2, args=(item, Data, queue)))
-                else:
-                    pass
-            except:
-                logger.error("Erreur, statut Locked non trouvé !!!")
-        if plist == []:
-            logger.info('No active IRD')
-            time.sleep(1)
-        else:
-            for p in plist:
-                p.start()
-            for p in plist:
-                p.join()
-            DataCSV = [queue.get() for p in plist]
-            with open(Data['CSV']) as f:
-                reader = csv.reader(f, delimiter=';')
-                lines = [l for l in reader]
-            for item in lines:
-                for Info in DataCSV:
-                    if Info[0] == item[0]:
-                        lines.remove(item)
-                    else:
-                        pass
-            lines = lines + DataCSV
-            logger.info("4 - Ecriture des Informations")
-            with open(Data['CSV'], "w", newline='') as f:
-                writer = csv.writer(f, delimiter=';')
-                writer.writerows(lines)
-            logger.info("5 - Fichier CSV mis à jour par IRDLockLoop")
-            time.sleep(1)
+            if item[7] == "Locked":
+                lines.remove(item)
+            else:
+                pass
+        lines = lines + DataCSV
+        logger.info("4 - Ecriture des Informations")
+        with open(Data['CSV'], "w", newline='') as f:
+            writer = csv.writer(f, delimiter=';')
+            writer.writerows(lines)
+        time.sleep(0.01)
+        logger.info("5 - Fichier CSV mis à jour par IRDLockLoop")
+        return
 
 if __name__ == '__main__':
     try:
         logger.info("Initialisation du script...")
         # CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
-        InitCSV(Data)
-        time.sleep(1)
-        logger.info("Lancement de la boucle de vérification")
-        IRDLockLoop(Data)
+        while True:
+            InitCSV(Data)
+            for i in range(4):
+                IRDLockLoop(Data)
     except:
         logger.info("Fin du script.")
         raise
