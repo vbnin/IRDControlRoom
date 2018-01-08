@@ -9,13 +9,9 @@ Script de relevé des niveaux de réceptions des IRD nodal
 import logging
 import configparser
 import sys
-import csv
 import os
-import time
-import subprocess
 from logging.handlers import RotatingFileHandler
-from Libraries import PrintException, IRDInfo1, IRDInfo2
-from multiprocessing import Process, Queue
+from libraries import CheckLoop
 
 # Activation du logger principal
 try:
@@ -25,16 +21,17 @@ try:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
     logger = logging.getLogger(__name__)
     logger.addHandler(handler)
+    logger.info("Initialisation du fichier de log dans " + LogPath)
 except:
-    PrintException("Impossible d'initialiser le fichier de logs.")
+    print("Impossible d'initialiser le fichier de logs.")
     exit()
 
 # Lecture du fichier de Configuration et attribution des variables
 try:
     Data = {}
+    logger.info("Lecture du fichier config.ini")
     config = configparser.SafeConfigParser()
     config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
-    Data["Locked"] = []
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
     Data['DR5000Margin'] = config.get('DR5000', 'OidMargin')
@@ -47,78 +44,17 @@ try:
     Data['TT1260SvcName'] = config.get('TT1260', 'OidServiceName')
     for i in range(1, 36):
         Position = "ird" + str(i)
-        Model = "type" + str(i)
+        Model = "model" + str(i)
         Data[Position] = config.get('IRD', 'IRD' + str(i))
         Data[Model] = config.get('IRD', 'IRD' + str(i) + 'Model')
 except:
-    PrintException("Fichier de configuration 'config.ini' invalide ou introuvable.")
+    print("Fichier de configuration 'config.ini' invalide ou introuvable.")
     exit()
-
-def InitCSV(Data):
-    queue = Queue()
-    plist = [Process(target=IRDInfo1, args=(i, Data, queue)) for i in range(1, 36)]
-    for p in plist:
-        p.start()
-    for p in plist:
-        p.join()
-    DataCSV = [queue.get() for p in plist]
-    logger.info(DataCSV)
-    with open(Data['CSV'], "w", newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerows(DataCSV)
-    time.sleep(0.01)
-    logger.info("Fichier CSV mis à jour par InitCSV.")
-    return
-
-# Fonction de récupération d'état par script périodique
-def IRDLockLoop(Data):
-    queue = Queue()
-    LockList = []
-    plist = []
-    with open(Data['CSV']) as f:
-        reader = csv.reader(f, delimiter=';')
-        lines = [l for l in reader]
-    for item in lines:
-        try:
-            if item[7] == "Locked":
-                plist.append(Process(target=IRDInfo2, args=(item, Data, queue)))
-            else:
-                pass
-        except:
-            logger.error("Erreur, statut Locked non trouvé !!!")
-    if plist == []:
-        logger.info('No active IRD')
-        time.sleep(0.01)
-        return
-    else:
-        for p in plist:
-            p.start()
-        for p in plist:
-            p.join()
-        DataCSV = [queue.get() for p in plist]
-        with open(Data['CSV']) as f:
-            reader = csv.reader(f, delimiter=';')
-            lines = [l for l in reader]
-        for item in lines:
-            if item[7] == "Locked":
-                lines.remove(item)
-            else:
-                pass
-        lines = lines + DataCSV
-        logger.info("4 - Ecriture des Informations")
-        with open(Data['CSV'], "w", newline='') as f:
-            writer = csv.writer(f, delimiter=';')
-            writer.writerows(lines)
-        time.sleep(0.01)
-        logger.info("5 - Fichier CSV mis à jour par IRDLockLoop")
-        return
 
 if __name__ == '__main__':
     try:
-        logger.info("Initialisation du script...")
-        # CBprocess = subprocess.Popen(['python', os.path.join(os.path.dirname(__file__), 'CallBack.py')], stdout = subprocess.PIPE )
-        InitCSV(Data)
-        IRDLockLoop(Data)
+        logger.info("Initialisation de la boucle de vérification...")
+        CheckLoop(Data)
     except:
-        logger.info("Fin du script.")
+        print("Fin inattendue du script.")
         raise
