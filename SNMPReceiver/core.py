@@ -42,6 +42,9 @@ try:
     Data['TT1260Snr'] = config.get('TT1260', 'OidSnr')
     Data['TT1260Margin'] = config.get('TT1260', 'OidMargin')
     Data['TT1260SvcName'] = config.get('TT1260', 'OidServiceName')
+    Data['RX1290Snr'] = config.get('RX1290', 'OidSnr')
+    Data['RX1290Margin'] = config.get('RX1290', 'OidMargin')
+    Data['RX1290SvcName'] = config.get('RX1290', 'OidServiceName')
     for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "model" + str(i)

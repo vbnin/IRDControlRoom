@@ -34,7 +34,7 @@ def CheckLoop(DataDict):
         with open(DataDict['CSV'], "w", newline='') as f:
             writer = csv.writer(f, delimiter=';')
             writer.writerows(DataCSV)
-        time.sleep(0.02)
+        time.sleep(0.01)
         logger.info("Fichier CSV mis à jour par InitCSV.")
 
 # Fonction de collection des informations par SNMP
@@ -49,18 +49,6 @@ def IRDInfo(i, Data):
         Info = Info + Snmp
         Info[5] = int(Info[5])/10
         Info[6] = int(Info[6])/10
-    elif Data[Model] == "RX8200":
-        Snmp = SNMPget(Data[Position], 1, Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
-        Info = Info + Snmp
-        if Info[4][:7] == "No Such":
-            Info[4:6] = ['', 0, 0]
-            Info.remove(Info[7])
-        else:
-            try:
-                Info[5:6] = [Info[5][:4], Info[6][2:6]]
-            except:
-                Info[5:6] = [0, 0]
-                Info.remove(Info[7])
     elif Data[Model] == "TT1260":
         Snmp = SNMPget(Data[Position], 0, Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin'])
         Info = Info + Snmp
@@ -68,8 +56,25 @@ def IRDInfo(i, Data):
         Info[6] = int(Info[6])/100
         if Info[6] == 100.0:
             Info[6] = 0.0
+    elif Data[Model] == "RX8200":
+        Snmp = SNMPget(Data[Position], 1, Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin'])
+        Info = Info + Snmp
+        if Info[4][:7] == "No Such":
+            Info[4:6] = ['', 0.0, 0.0]
+        else:
+            try:
+                Info[5:6] = [Info[5][:4], Info[6][2:6]]
+            except:
+                Info[5:6] = [0.0, 0.0]
+    elif Data[Model] == "RX1290":
+        Snmp = SNMPget(Data[Position], 0, Data['RX1290SvcName'], Data['RX1290Snr'], Data['RX1290Margin'])
+        Info = Info + Snmp
+        Info[5] = int(Info[5])/100
+        Info[6] = int(Info[6])/100
+        if Info[6] == 100.0:
+            Info[6] = 0.0
     else:
-        Info = Info + ['N/A', 'N/A', 0]
+        Info = Info + ['Non géré', 'Non géré', 'Non géré']
     return Info
 
 # Définition de la commande 'SNMP Get'
@@ -86,7 +91,7 @@ def SNMPget(IPAddr, SNMPv, OID1, OID2, OID3):
                 ObjectType(ObjectIdentity(OID3))))
         if errorIndication or errorStatus:
             logger.error("No SNMP response before timeout")
-            snmp = ['', 0, 0]
+            snmp = ['Erreur : SNMP timeout', 0.0, 0.0]
             return snmp
         else:
             for varBind in varBinds:
@@ -96,5 +101,5 @@ def SNMPget(IPAddr, SNMPv, OID1, OID2, OID3):
             return snmp
     except:
         logger.error("Impossible de récupérer les infos SNMP...")
-        snmp = ['', 0, 0]
+        snmp = ['Erreur : SNMP timeout', 0.0, 0.0]
         return snmp
