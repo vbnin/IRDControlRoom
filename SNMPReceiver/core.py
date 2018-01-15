@@ -7,7 +7,7 @@ Script de relevé des niveaux de réceptions des IRD nodal
 """
 
 import logging
-import configparser
+import configparser #Librairie externe à télécharger
 import sys
 import os
 from logging.handlers import RotatingFileHandler

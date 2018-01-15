@@ -6,7 +6,7 @@ Developeurs : VBNIN + CKAR - IPEchanges.
 Script de relevé des niveaux de réceptions des IRD nodal
 """
 
-import logging
+import logging #Librairie externe à télécharger
 import sys
 import csv
 import time
