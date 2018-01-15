@@ -12,7 +12,7 @@ sudo chmod +x core.py
 sudo chmod +x libraries.py
 
 echo "*** Activation du script au reboot via sudo crontab ***"
-echo -e "$(crontab -u root -l)\n@reboot /usr/bin/python3 /usr/local/bin/IRDControlRoom/SNMPReceiver/core.py | crontab -u root -l
+echo -e "$(crontab -u root -l)\n@reboot /usr/bin/python3 /usr/local/bin/IRDControlRoom/SNMPReceiver/core.py 2&>1 /var/log/crontab.log | crontab -u root -l
 
 echo "*** Installation des packages Python3 requis ***"
 sudo apt-get install python3-pip
