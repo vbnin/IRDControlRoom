@@ -5,17 +5,20 @@
 Developeurs : VBNIN + CKAR - IPEchanges.
 Script de relevé des niveaux de réceptions des IRD nodal
 """
-
-import logging #Librairie externe à télécharger
-import sys
-import csv
-import time
-import re
-from logging.handlers import RotatingFileHandler
+#Librairies externe à télécharger
 from pysnmp.hlapi import *
 from pysnmp.carrier.asyncore.dgram import udp, unix
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
+
+#Import des librairies internes
+import sys
+import csv
+import re
+import socket
+import logging 
+from logging.handlers import RotatingFileHandler
+
 
 # Activation du logger
 LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
@@ -34,14 +37,15 @@ def CheckLoop(DataDict):
         with open(DataDict['CSV'], "w", newline='') as f:
             writer = csv.writer(f, delimiter=';')
             writer.writerows(DataCSV)
-        time.sleep(0.01)
         logger.info("Fichier CSV mis à jour par InitCSV.")
+        TCPget(DataDict, DataCSV)
+        logger.info("Affichage Mosaique mis à jour par TCPget.")
 
 # Fonction de collection des informations par SNMP
 def IRDInfo(i, Data):
     Position = "ird" + str(i)
     Model = "model" + str(i)
-    SatName = "SAT-" + str(i)
+    SatName = "SAT-" + str('%02d' % i)
     logger.debug("Collecte des Infos pour " + SatName)
     Info = [Position, SatName, Data[Position], Data[Model]]
     if Data[Model] == "DR5000":
@@ -103,3 +107,28 @@ def SNMPget(IPAddr, SNMPv, OID1, OID2, OID3):
         logger.error("Impossible de récupérer les infos SNMP...")
         snmp = ['Erreur : SNMP timeout', 0.0, 0.0]
         return snmp
+
+def TCPget(Data, DataCSV):
+    # Open socket, send message, close socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((Data['MosaAddr'], Data['MosaTCPPort']))
+    OpenCmd = ("<openID>{}</openID>\n").format(Data['MosaRoom'])
+    s.send(OpenCmd.encode())
+    for Info in DataCSV:
+        MosaName = Info[1] + "_MARGIN"
+        try:  
+            if Info[6] > 0.0 and Info[6] <= 2.99: 
+                SendCmd = ('<setKStatusMessage>set id="{0}" status="Minor" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
+            elif Info[6] > 2.99 and Info[6] <= 7.0:
+                SendCmd = ('<setKStatusMessage>set id="{0}" status="OK" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
+            elif Info[6] > 7.0:
+                SendCmd = ('<setKStatusMessage>set id="{0}" status="Major" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
+            else:
+                SendCmd = ('<setKStatusMessage>set id="{}" status="Disabled" message="Unlocked"</setKStatusMessage>\n').format(MosaName)
+        except:
+            SendCmd = ('<setKStatusMessage>set id="{}" status="Disabled" message="Unsupported"</setKStatusMessage>\n').format(MosaName)
+        s.send(SendCmd.encode())
+    s.send("<closeID/>\n".encode())
+    # data = s.recv(Data['MosaBuffer'])
+    # logger.info(data.decode())
+    s.close()
