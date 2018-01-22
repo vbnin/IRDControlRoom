@@ -111,24 +111,32 @@ def SNMPget(IPAddr, SNMPv, OID1, OID2, OID3):
 def TCPget(Data, DataCSV):
     # Open socket, send message, close socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((Data['MosaAddr'], Data['MosaTCPPort']))
-    OpenCmd = ("<openID>{}</openID>\n").format(Data['MosaRoom'])
+    try :
+        s.connect((Data['MosaAddr'], Data['MosaTCPPort']))
+    except TimeoutError:
+        logger.error(TimeoutError)
+        return
+    OpenCmd = "<openID>{}</openID>\n".format(Data['MosaRoom'])
     s.send(OpenCmd.encode())
+    Feedback = s.recv(Data['MosaBuffer'])
+    if Feedback[:6].decode() == "<ack/>":
+        logger.info("Connexion établie avec la mosaique Miranda, upload des informations...")
+    else:
+        logger.error("Erreur de connexion avec la Mosaique !")
+        return
     for Info in DataCSV:
-        MosaName = Info[1] + "_MARGIN"
-        try:  
-            if Info[6] > 0.0 and Info[6] <= 2.99: 
-                SendCmd = ('<setKStatusMessage>set id="{0}" status="Minor" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
-            elif Info[6] > 2.99 and Info[6] <= 7.0:
-                SendCmd = ('<setKStatusMessage>set id="{0}" status="OK" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
-            elif Info[6] > 7.0:
-                SendCmd = ('<setKStatusMessage>set id="{0}" status="Major" message="{1}"</setKStatusMessage>\n').format(MosaName, Info[6])
+        MosaName = Info[1].replace('-', '') + "_MARGIN"
+        try:
+            if int(Info[6]) > 0.1 and int(Info[6]) <= 2.99:
+                SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
+            elif int(Info[6]) > 2.99 and int(Info[6]) <= 7.0:
+                SendCmd = '<setKStatusMessage>set id="{}" status="OK" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
+            elif int(Info[6]) > 7.0:
+                SendCmd = '<setKStatusMessage>set id="{}" status="MAJOR" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
             else:
-                SendCmd = ('<setKStatusMessage>set id="{}" status="Disabled" message="Unlocked"</setKStatusMessage>\n').format(MosaName)
+                SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Unlocked"</setKStatusMessage>\n'.format(MosaName)
         except:
-            SendCmd = ('<setKStatusMessage>set id="{}" status="Disabled" message="Unsupported"</setKStatusMessage>\n').format(MosaName)
+            SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Erreur"</setKStatusMessage>\n'.format(MosaName)
         s.send(SendCmd.encode())
     s.send("<closeID/>\n".encode())
-    # data = s.recv(Data['MosaBuffer'])
-    # logger.info(data.decode())
     s.close()
