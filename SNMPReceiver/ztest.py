@@ -85,25 +85,30 @@ def SNMPbulk(OID):
 
 def EasySNMP(OID1, OID2, OID3):
     # Create an SNMP session to be used for all our requests
-    session = Session(hostname='10.75.216.4', community='private', version=2)
+    session = Session(hostname='10.75.216.226', community='private', version=2)
     print(session.get(OID1))
     print(session.get(OID2))
     print(session.get(OID3))
 
-start = time.time()
-for i in range(0,10):
-    SNMPget(OID1, OID2, OID3)
-stop = time.time()-start
-logger.info(stop)
-
-start = time.time()
-for i in range(0,10):
-    SNMPbulk(OID4)
-stop = time.time()-start
-logger.info(stop)
-
+# Test avec Librairie EasySNMP
 start = time.time()
 for i in range(0,10):
     EasySNMP(OID1, OID2, OID3)
 stop = time.time()-start
 logger.info(stop)
+
+# # Test avec pysnmp en version Get
+# start = time.time()
+# for i in range(0,10):
+#     SNMPget(OID1, OID2, OID3)
+# stop = time.time()-start
+# logger.info(stop)
+
+# # Test avec pysnmp en version Bulk
+# start = time.time()
+# for i in range(0,10):
+#     SNMPbulk(OID4)
+# stop = time.time()-start
+# logger.info(stop)
+
+
