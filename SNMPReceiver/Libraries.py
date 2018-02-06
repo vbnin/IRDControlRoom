@@ -16,8 +16,12 @@ import sys
 import csv
 import re
 import socket
+<<<<<<< HEAD
 import logging
 import time
+=======
+import logging 
+>>>>>>> 9c41a1838e68aac6126e5a7ca555ca95f94e9484
 from logging.handlers import RotatingFileHandler
 
 
@@ -39,10 +43,16 @@ def CheckLoop(DataDict):
         with open(DataDict['CSV'], "w", newline='') as f:
             writer = csv.writer(f, delimiter=';')
             writer.writerows(DataCSV)
+<<<<<<< HEAD
         logger.debug("Fichier CSV mis à jour par InitCSV.")
         TCPget(DataDict, DataCSV)
         logger.debug("Affichage Mosaique mis à jour par TCPget.")
         logger.info("Mise a jour page web et mosaique : OK")
+=======
+        logger.info("Fichier CSV mis à jour par InitCSV.")
+        TCPget(DataDict, DataCSV)
+        logger.info("Affichage Mosaique mis à jour par TCPget.")
+>>>>>>> 9c41a1838e68aac6126e5a7ca555ca95f94e9484
 
 # Fonction de collection des informations par SNMP
 def IRDInfo(i, Data):
@@ -123,18 +133,30 @@ def TCPget(Data, DataCSV):
     s.send(OpenCmd.encode())
     Feedback = s.recv(Data['MosaBuffer'])
     if Feedback[:6].decode() == "<ack/>":
+<<<<<<< HEAD
         logger.debug("Connexion établie avec la mosaique Miranda, upload des informations...")
+=======
+        logger.info("Connexion établie avec la mosaique Miranda, upload des informations...")
+>>>>>>> 9c41a1838e68aac6126e5a7ca555ca95f94e9484
     else:
         logger.error("Erreur de connexion avec la Mosaique !")
         return
     for Info in DataCSV:
         MosaName = Info[1].replace('-', '') + "_MARGIN"
         try:
+<<<<<<< HEAD
             if float(Info[6]) > 0.1 and float(Info[6]) <= 2.99:
                 SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
             elif float(Info[6]) > 2.99 and float(Info[6]) <= 7.0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="OK" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
             elif float(Info[6]) > 7.0:
+=======
+            if int(Info[6]) > 0.1 and int(Info[6]) <= 2.99:
+                SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
+            elif int(Info[6]) > 2.99 and int(Info[6]) <= 7.0:
+                SendCmd = '<setKStatusMessage>set id="{}" status="OK" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
+            elif int(Info[6]) > 7.0:
+>>>>>>> 9c41a1838e68aac6126e5a7ca555ca95f94e9484
                 SendCmd = '<setKStatusMessage>set id="{}" status="MAJOR" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[6])
             else:
                 SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Unlocked"</setKStatusMessage>\n'.format(MosaName)
