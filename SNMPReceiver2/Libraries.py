@@ -8,7 +8,10 @@ Release v2.0 avec librairie EasySNMP
 """
 
 #Librairies externe à télécharger
-from easysnmp import Session, snmp_get
+try:
+    from easysnmp import Session, snmp_get
+except:
+    print("ERREUR : Librairie easysnmp non installé ou incompatible Windows...")
 
 #Import des librairies internes
 import sys
@@ -150,9 +153,11 @@ def SNMPget(IPAddr, SNMPv, OidList):
 def TCPget(Data, DataCSV):
     # Open socket, send message, close socket
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(1.5)
     try :
         s.connect((Data['MosaAddr'], Data['MosaTCPPort']))
-    except TimeoutError:
+        s.settimeout(None)
+    except:
         logger.error("Impossible de joindre la mosaique ({}) !".format(Data['MosaAddr']))
         return
     OpenCmd = "<openID>{}</openID>\n".format(Data['MosaRoom'])
