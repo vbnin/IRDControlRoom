@@ -69,6 +69,7 @@ def CheckLoop(DataDict):
                 writer.writerows(DataCSV)
         except PermissionError or IOError:
             logger.error("Impossible de mettre à jour le fichier CSV !")
+            continue
         logger.debug("Fichier CSV mis à jour par CheckLoop.")
         logger.info("Mise a jour page web et mosaique : OK")
 
