@@ -171,11 +171,11 @@ def TCPget(Data, DataCSV):
         try:
             if int(Info[4]) == 0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Unlocked"</setKStatusMessage>\n'.format(MosaName)
-            elif float(Info[7]) <= 2.99:
+            elif Info[7] <= 2.99:
                 SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
-            elif float(Info[7]) > 2.99 and float(Info[6]) <= 7.0:
+            elif Info[7] > 2.99 and float(Info[6]) <= 7.0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="OK" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
-            elif float(Info[7]) > 7.0:
+            elif Info[7] > 7.0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="MAJOR" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
             else:
                 SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Erreur"</setKStatusMessage>\n'.format(MosaName)
