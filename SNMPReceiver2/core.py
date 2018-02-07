@@ -4,6 +4,7 @@
 """
 Developeurs : VBNIN + CKAR - IPEchanges.
 Script de relevé des niveaux de réceptions des IRD nodal
+Release v2.0 avec librairie EasySNMP
 """
 
 import logging
