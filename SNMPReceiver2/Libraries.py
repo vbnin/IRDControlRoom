@@ -53,7 +53,7 @@ def InitScript(Data):
             logger.error("Impossible de déterminer le modèle de : {} !!".format(Position))
             Data[Model] = 'Inconnu'
     return Data
-        
+
 # Fonction de lancement des Process et écriture du CSV
 def CheckLoop(DataDict):
     while True:
