@@ -8,7 +8,7 @@ Release v2.0 avec librairie EasySNMP
 """
 
 #Librairies externe à télécharger
-# from easysnmp import Session, snmp_get
+from easysnmp import Session, snmp_get
 
 #Import des librairies internes
 import sys
