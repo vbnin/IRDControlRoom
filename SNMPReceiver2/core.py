@@ -31,7 +31,7 @@ try:
     Data = {}
     logger.info("Lecture du fichier config.ini")
     config = configparser.SafeConfigParser()
-    config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver/config.ini')
+    config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver2/config.ini')
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['WinCSV'] = config.get('GENERAL', 'WinCSVfile')
     Data['IRDModel'] = config.get('GENERAL', 'OidIRDModel')
