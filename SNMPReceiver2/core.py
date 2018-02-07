@@ -11,7 +11,7 @@ import configparser #Librairie externe à télécharger
 import sys
 import os
 from logging.handlers import RotatingFileHandler
-from Libraries import CheckLoop
+from Libraries import CheckLoop, InitScript
 
 # Activation du logger principal
 try:
@@ -68,6 +68,8 @@ except:
 
 if __name__ == '__main__':
     try:
+        logger.info("Démarrage du script.")
+        InitScript(Data)
         logger.info("Initialisation de la boucle de vérification...")
         CheckLoop(Data)
     except:
