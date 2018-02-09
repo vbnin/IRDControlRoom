@@ -7,8 +7,11 @@ Script de relevé des niveaux de réceptions des IRD nodal
 Release v2.0 avec librairie EasySNMP
 """
 
+#Librairie externe à télécharger
+import configparser 
+
+#Import des librairies internes
 import logging
-import configparser #Librairie externe à télécharger
 import sys
 import os
 from logging.handlers import RotatingFileHandler
@@ -17,7 +20,7 @@ from Libraries import CheckLoop, InitScript
 # Activation du logger principal
 try:
     LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
-    handler = RotatingFileHandler(LogPath, maxBytes=10000000, backupCount=5)
+    handler = RotatingFileHandler(LogPath, maxBytes=10000000, backupCount=5, encoding="utf-8")
     handler.setFormatter(logging.Formatter('%(asctime)s : %(message)s'))
     logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
     logger = logging.getLogger(__name__)
@@ -30,37 +33,23 @@ except:
 # Lecture du fichier de Configuration et attribution des variables
 try:
     Data = {}
-    logger.info("Lecture du fichier config.ini")
+    ConfigPath = os.path.join(os.path.dirname(__file__), r'config.ini')
+    logger.info("Lecture du fichier config dans {}".format(ConfigPath))
     config = configparser.SafeConfigParser()
-    #config.read(os.path.join(os.path.dirname(__file__), 'config.ini') if sys.platform.lower() == 'win32' else '/usr/local/bin/IRDControlRoom/SNMPReceiver2/config.ini')
-    config.read(os.path.join(os.getcwd(), r'SNMPReceiver2\config.ini'))
+    config.read(ConfigPath)
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['WinCSV'] = config.get('GENERAL', 'WinCSVfile')
+    Data['SupportedModels'] = config.get('GENERAL', 'SupportedModels').split(', ')
+    Data['CheckedInfos'] = config.get('GENERAL', 'CheckedInfos').split(', ')
     Data['IRDModel'] = config.get('GENERAL', 'OidIRDModel')
     Data['MosaAddr'] = config.get('MOSAIQUE', 'IPAddress')
     Data['MosaTCPPort'] = int(config.get('MOSAIQUE', 'PortTCP'))
     Data['MosaBuffer'] = int(config.get('MOSAIQUE', 'BufferSize'))
     Data['MosaRoom'] = config.get('MOSAIQUE', 'Room')
-    Data['DR5000Lock'] = config.get('DR5000', 'OidLock')
-    Data['DR5000Snr'] = config.get('DR5000', 'OidSnr')
-    Data['DR5000Margin'] = config.get('DR5000', 'OidMargin')
-    Data['DR5000SvcName'] = config.get('DR5000', 'OidServiceName')
-    Data['DR8400Lock'] = config.get('DR8400', 'OidLock')
-    Data['DR8400Snr'] = config.get('DR8400', 'OidSnr')
-    Data['DR8400Margin'] = config.get('DR8400', 'OidMargin')
-    Data['DR8400SvcName'] = config.get('DR8400', 'OidServiceName')
-    Data['RX8200Lock'] = config.get('RX8200', 'OidLock')
-    Data['RX8200Snr'] = config.get('RX8200', 'OidSnr')
-    Data['RX8200Margin'] = config.get('RX8200', 'OidMargin')
-    Data['RX8200SvcName'] = config.get('RX8200', 'OidServiceName')
-    Data['TT1260Lock'] = config.get('TT1260', 'OidLock')
-    Data['TT1260Snr'] = config.get('TT1260', 'OidSnr')
-    Data['TT1260Margin'] = config.get('TT1260', 'OidMargin')
-    Data['TT1260SvcName'] = config.get('TT1260', 'OidServiceName')
-    Data['RX1290Lock'] = config.get('RX1290', 'OidLock')
-    Data['RX1290Snr'] = config.get('RX1290', 'OidSnr')
-    Data['RX1290Margin'] = config.get('RX1290', 'OidMargin')
-    Data['RX1290SvcName'] = config.get('RX1290', 'OidServiceName')
+    for item in Data['SupportedModels']:
+        for Oid in Data['CheckedInfos']:
+            ModelCheck = item + Oid
+            Data[ModelCheck] = config.get(item, 'Oid'+Oid)
     for i in range(1, 36):
         Position = "ird" + str(i)
         Data[Position] = config.get('IRD', 'IRD' + str(i))
@@ -71,7 +60,8 @@ except:
 if __name__ == '__main__':
     try:
         logger.info("Démarrage du script.")
-        InitScript(Data)
+        Dict = InitScript(Data)
+        Data = {**Data, **Dict}
         logger.info("Initialisation de la boucle de vérification...")
         CheckLoop(Data)
     except:

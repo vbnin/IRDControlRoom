@@ -11,17 +11,19 @@ from pysnmp.carrier.asyncore.dgram import udp, unix
 from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
 from pysnmp.entity.rfc3413.oneliner import cmdgen
-from easysnmp import Session
+# from easysnmp import Session
 
 #Import des librairies internes
 import sys
 import csv
 import re
+import os
 import socket
 import logging
 import time
 from logging.handlers import RotatingFileHandler
 
+import configparser
 
 # Activation du logger
 LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
@@ -30,6 +32,45 @@ handler.setFormatter(logging.Formatter('%(asctime)s : %(message)s'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
 logger = logging.getLogger(__name__)
 logger.addHandler(handler)
+
+
+Data = {}
+ConfigPath = os.path.join(os.path.dirname(__file__), r'config.ini')
+logger.info("Lecture du fichier config dans {}".format(ConfigPath))
+config = configparser.SafeConfigParser()
+config.read(ConfigPath)
+Data['CSV'] = config.get('GENERAL', 'CSVfile')
+Data['WinCSV'] = config.get('GENERAL', 'WinCSVfile')
+Data['SupportedModels'] = config.get('GENERAL', 'SupportedModels').split(', ')
+Data['CheckedInfos'] = config.get('GENERAL', 'CheckedInfos').split(', ')
+Data['IRDModel'] = config.get('GENERAL', 'OidIRDModel')
+Data['MosaAddr'] = config.get('MOSAIQUE', 'IPAddress')
+Data['MosaTCPPort'] = int(config.get('MOSAIQUE', 'PortTCP'))
+Data['MosaBuffer'] = int(config.get('MOSAIQUE', 'BufferSize'))
+Data['MosaRoom'] = config.get('MOSAIQUE', 'Room')
+for item in Data['SupportedModels']:
+    for Oid in Data['CheckedInfos']:
+        ModelCheck = item + Oid
+        # OidCheck = 'Oid' + Oid
+        Data[ModelCheck] = config.get(item, 'Oid' + Oid)
+for i in range(1, 36):
+    Position = "ird" + str(i)
+    Data[Position] = config.get('IRD', 'IRD' + str(i))
+logger.info(Data)
+
+s = "Check value='This is a RX8200 Receiver' test"
+m = re.search(r'(value=)\'(.*)\'\ (.*)', s)
+logger.info(m.group(1))
+logger.info(m.group(2))
+for Model in Data['SupportedModels']:
+    logger.info(Model[:3])
+    if re.search(Model[:3], s):
+        Modele = Model
+        logger.info(Modele)
+    else:
+        logger.error('None')
+
+
 
 OID1 = '.1.3.6.1.4.1.27338.5.5.3.3.2.0'
 OID2 = '.1.3.6.1.4.1.27338.5.5.3.3.3.0'

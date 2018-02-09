@@ -21,7 +21,7 @@ from logging.handlers import RotatingFileHandler
 
 # Activation du logger
 LogPath = 'SNMPReceiver.log' if sys.platform.lower() == 'win32' else '/var/log/SNMPReceiver.log'
-handler = RotatingFileHandler(LogPath, maxBytes=10000000, backupCount=5)
+handler = RotatingFileHandler(LogPath, maxBytes=10000000, backupCount=5, encoding="utf-8")
 handler.setFormatter(logging.Formatter('%(asctime)s : %(message)s'))
 logging.basicConfig(level=logging.INFO, format='%(asctime)s : %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ logger.addHandler(handler)
 
 # Définition de la fonction pour déterminer le modèle des IRD
 def InitScript(Data):
+    Dict = {}
     for i in range(1, 36):
         Position = "ird" + str(i)
         Model = "model" + str(i)
@@ -36,23 +37,23 @@ def InitScript(Data):
             s = snmp_get(Data['IRDModel'], hostname=Data[Position], community='private', version=1)
         except:
             logger.error("Impossible de communiquer avec : {} !!".format(Position))
-            Data[Model] = 'Inconnu'
+            Dict[Model] = 'Inconnu'
             continue
         m = re.search(r'(value=)\'(.*)\'\ (.*)', str(s))
-        if re.match(r'(DR5)', m.group(2)):
-            Data[Model] = 'DR5000'
-        elif re.match(r'(DR8)', m.group(2)):
-            Data[Model] = 'DR8400'
-        elif re.match(r'(RX8)', m.group(2)):
-            Data[Model] = 'RX8200'
-        elif re.match(r'(TT1)', m.group(2)):
-            Data[Model] = 'TT1260'
-        elif re.match(r'(RX1)', m.group(2)):
-            Data[Model] = 'RX1290'
-        else:
+        for item in Data['SupportedModels']:
+            if re.search(item[:3], m.group(2), re.IGNORECASE):
+                Dict[Model] = item
+                break
+            elif re.search(r'armv7', m.group(2), re.IGNORECASE):
+                Dict[Model] = item
+                break
+            else:
+                Dict[Model] = 'NoMatch'
+        if Dict[Model] == 'NoMatch':
             logger.error("Impossible de déterminer le modèle de : {} !!".format(Position))
-            Data[Model] = 'Inconnu'
-    return Data
+            Dict[Model] = 'Inconnu'
+    logger.debug(Dict)
+    return Dict
 
 # Fonction de lancement des Process et écriture du CSV
 def CheckLoop(DataDict):
@@ -64,10 +65,10 @@ def CheckLoop(DataDict):
         logger.debug("Affichage Mosaique mis à jour par TCPget.")
         DataCSV.append(["LastUpdate", time.strftime("%d/%m/%Y, %H:%M:%S")])
         try:
-            with open(DataDict['WinCSV'] if sys.platform.lower() == 'win32' else DataDict['CSV'], "w", newline='') as f:
+            with open(DataDict['WinCSV'] if sys.platform.lower() == 'win32' else DataDict['CSV'], "w", encoding="utf-8", newline='') as f:
                 writer = csv.writer(f, delimiter=';')
                 writer.writerows(DataCSV)
-        except PermissionError or IOError:
+        except:
             logger.error("Impossible de mettre à jour le fichier CSV !")
             continue
         logger.debug("Fichier CSV mis à jour par CheckLoop.")
@@ -81,56 +82,65 @@ def IRDInfo(i, Data):
     logger.debug("Collecte des Infos pour " + SatName)
     Info = [Position, SatName, Data[Position], Data[Model]]
     if Data[Model] == "DR5000":
-        OidList = [Data['DR5000Lock'], Data['DR5000SvcName'], Data['DR5000Snr'], Data['DR5000Margin']]
+        OidList = [Data['DR5000Lock'], Data['DR5000ServiceName'], Data['DR5000Snr'], Data['DR5000Margin']]
         Snmp = SNMPget(Data[Position], 2, OidList)
         Info = Info + Snmp
-        Info[6] = float(Info[6])/10
-        Info[7] = float(Info[7])/10
-        if int(Info[4]) == 0:
-            Info[5:7] = ['Unlocked', 0.0, 0.0]
+        if int(Info[4]) == 1:
+            Info[4] = 'Locked'
+            Info[6] = float(Info[6])/10
+            Info[7] = float(Info[7])/10
+        else:
+            Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "DR8400":
-        OidList = [Data['DR8400Lock'], Data['DR8400SvcName'], Data['DR8400Snr'], Data['DR8400Margin']]
+        OidList = [Data['DR8400Lock'], Data['DR8400ServiceName'], Data['DR8400Snr'], Data['DR8400Margin']]
         Snmp = SNMPget(Data[Position], 2, OidList)
         Info = Info + Snmp
         Info[6] = float(Info[6])/10
         Info[7] = float(Info[7])/10
-        if int(Info[4]) == 0:
-            Info[5:7] = ['Unlocked', 0.0, 0.0]
+        if int(Info[4]) == 1:
+            Info[4] = 'Locked'
+        else:
+            Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "TT1260":
-        OidList = [Data['TT1260Lock'], Data['TT1260SvcName'], Data['TT1260Snr'], Data['TT1260Margin']]
+        OidList = [Data['TT1260Lock'], Data['TT1260ServiceName'], Data['TT1260Snr'], Data['TT1260Margin']]
         Snmp = SNMPget(Data[Position], 1, OidList)
         Info = Info + Snmp
         Info[6] = float(Info[6])/100
         Info[7] = float(Info[7])/100
-        if int(Info[4]) == 0:
-            Info[5:7] = ['Unlocked', 0.0, 0.0]
+        if int(Info[4]) == 2:
+            Info[4] = 'Locked'
+        else:
+            Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "RX8200":
-        OidList = [Data['RX8200Lock'], Data['RX8200SvcName'], Data['RX8200Snr'], Data['RX8200Margin']]
+        OidList = [Data['RX8200Lock'], Data['RX8200ServiceName'], Data['RX8200Snr'], Data['RX8200Margin']]
         Snmp = SNMPget(Data[Position], 2, OidList)
         Info = Info + Snmp
-        if int(Info[4]) == 0:
-            Info[5:7] = ['Unlocked', 0.0, 0.0]
-        else:
+        if Info[4] == 'LOCKED':
+            Info[4] = 'Locked'            
             #
             # Partie à modifier avec une regex en fonction des retours snmp. Mettre en float ensuite.
             #
             try:
-                Info[6:7] = [Info[6][:4], Info[7][2:6]]
+                Info[6:8] = [Info[6][:4], Info[7][2:6]]
             except:
-                Info[6:7] = [0.0, 0.0]
+                Info[6:8] = [0.0, 0.0]
             #
             #
             #
+        else:
+            Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "RX1290":
-        OidList = [Data['RX1290Lock'], Data['RX1290SvcName'], Data['RX1290Snr'], Data['RX1290Margin']]
+        OidList = [Data['RX1290Lock'], Data['RX1290ServiceName'], Data['RX1290Snr'], Data['RX1290Margin']]
         Snmp = SNMPget(Data[Position], 1, OidList)
         Info = Info + Snmp
         Info[6] = float(Info[6])/100
         Info[7] = float(Info[7])/100
-        if int(Info[4]) == 0:
-            Info[5:7] = ['Unlocked', 0.0, 0.0]
+        if int(Info[4]) == 2:
+            Info[4] = 'Locked'
+        else:
+            Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     else:
-        Info = Info + [0, 'Non géré', 0.0, 0.0]
+        Info = Info + ['Unlocked', 'Non géré', 0.0, 0.0]
     return Info
 
 # Définition de la commande 'SNMP Get'
@@ -144,7 +154,7 @@ def SNMPget(IPAddr, SNMPv, OidList):
         return snmp
     except:
         logger.error("Impossible de récupérer les infos SNMP...")
-        snmp = [0, 'Erreur : SNMP timeout', 0.0, 0.0]
+        snmp = ['Erreur', 'Erreur : SNMP timeout', 0.0, 0.0]
         return snmp
 
 # Définition de la fonction de connexion TCP à la mosaique
@@ -157,6 +167,7 @@ def TCPget(Data, DataCSV):
         s.settimeout(None)
     except:
         logger.error("Impossible de joindre la mosaique ({}) !".format(Data['MosaAddr']))
+        time.sleep(0) if sys.platform.lower() == 'win32' else time.sleep(1.5)
         return
     OpenCmd = "<openID>{}</openID>\n".format(Data['MosaRoom'])
     s.send(OpenCmd.encode())
@@ -169,7 +180,7 @@ def TCPget(Data, DataCSV):
     for Info in DataCSV:
         MosaName = Info[1].replace('-', '') + "_MARGIN"
         try:
-            if int(Info[4]) == 0:
+            if Info[4] == 'Unlocked':
                 SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Unlocked"</setKStatusMessage>\n'.format(MosaName)
             elif Info[7] <= 2.99:
                 SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
