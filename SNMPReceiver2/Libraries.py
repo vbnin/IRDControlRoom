@@ -29,6 +29,7 @@ logger.addHandler(handler)
 
 # Définition de la fonction pour déterminer le modèle des IRD
 def InitScript(Data):
+    logger.info("Récupération des modèles d'IRD en cours...")
     Dict = {}
     for i in range(1, 36):
         Position = "ird" + str(i)
@@ -53,6 +54,7 @@ def InitScript(Data):
             logger.error("Impossible de déterminer le modèle de : {} !!".format(Position))
             Dict[Model] = 'Inconnu'
     logger.debug(Dict)
+    logger.info("Terminé.")
     return Dict
 
 # Fonction de lancement des Process et écriture du CSV
