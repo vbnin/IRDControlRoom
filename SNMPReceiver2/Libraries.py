@@ -117,16 +117,11 @@ def IRDInfo(i, Data):
         Info = Info + Snmp
         if Info[4] == 'LOCKED':
             Info[4] = 'Locked'            
-            #
-            # Partie à modifier avec une regex en fonction des retours snmp. Mettre en float ensuite.
-            #
             try:
-                Info[6:8] = [Info[6][:4], Info[7][2:6]]
+                Info[6:8] = [float(Info[6][:4]), float(Info[7][2:6])]
             except:
+                logger.error('Problème avec les valeurs renvoyés par le RX8200 : {}'.format(Position))
                 Info[6:8] = [0.0, 0.0]
-            #
-            #
-            #
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "RX1290":
@@ -184,7 +179,7 @@ def TCPget(Data, DataCSV):
                 SendCmd = '<setKStatusMessage>set id="{}" status="ERROR" message="Unlocked"</setKStatusMessage>\n'.format(MosaName)
             elif Info[7] <= 2.99:
                 SendCmd = '<setKStatusMessage>set id="{}" status="WARNING" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
-            elif Info[7] > 2.99 and float(Info[6]) <= 7.0:
+            elif Info[7] > 2.99 and Info[7] <= 7.0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="OK" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
             elif Info[7] > 7.0:
                 SendCmd = '<setKStatusMessage>set id="{}" status="MAJOR" message="{}"</setKStatusMessage>\n'.format(MosaName, Info[7])
