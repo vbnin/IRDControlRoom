@@ -14,6 +14,7 @@ import configparser
 import logging
 import sys
 import os
+import time
 from logging.handlers import RotatingFileHandler
 from Libraries import CheckLoop, InitScript
 
@@ -60,7 +61,8 @@ except:
 
 if __name__ == '__main__':
     try:
-        logger.info("Démarrage du script.")
+        logger.info("Démarrage du script, en attente des services réseaux...")
+        time.sleep(10)
         Dict = InitScript(Data)
         Data = {**Data, **Dict}
         logger.info("Initialisation de la boucle de vérification...")

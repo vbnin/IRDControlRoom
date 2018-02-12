@@ -63,7 +63,7 @@ def CheckLoop(DataDict):
             DataCSV.append(IRDInfo(i, DataDict))
         TCPget(DataDict, DataCSV)
         logger.debug("Affichage Mosaique mis à jour par TCPget.")
-        DataCSV.append(["LastUpdate", time.strftime("%d/%m/%Y, %H:%M:%S")])
+        DataCSV.append(["ird888", "LastUpdate", time.strftime("%d/%m/%Y, %H:%M:%S")])
         try:
             with open(DataDict['WinCSV'] if sys.platform.lower() == 'win32' else DataDict['CSV'], "w", encoding="utf-8", newline='') as f:
                 writer = csv.writer(f, delimiter=';')
@@ -72,7 +72,7 @@ def CheckLoop(DataDict):
             logger.error("Impossible de mettre à jour le fichier CSV !")
             continue
         logger.debug("Fichier CSV mis à jour par CheckLoop.")
-        logger.info("Mise a jour page web et mosaique : OK")
+        logger.info("Mise a jour page web et mosaique terminée")
         time.sleep(DataDict['RefreshRate'])
 
 # Fonction de collection des informations par SNMP
