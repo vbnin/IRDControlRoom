@@ -39,6 +39,7 @@ try:
     config.read(ConfigPath)
     Data['CSV'] = config.get('GENERAL', 'CSVfile')
     Data['WinCSV'] = config.get('GENERAL', 'WinCSVfile')
+    Data['RefreshRate'] = int(config.get('GENERAL', 'RefreshRate'))
     Data['SupportedModels'] = config.get('GENERAL', 'SupportedModels').split(', ')
     Data['CheckedInfos'] = config.get('GENERAL', 'CheckedInfos').split(', ')
     Data['IRDModel'] = config.get('GENERAL', 'OidIRDModel')

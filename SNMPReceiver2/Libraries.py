@@ -73,6 +73,7 @@ def CheckLoop(DataDict):
             continue
         logger.debug("Fichier CSV mis à jour par CheckLoop.")
         logger.info("Mise a jour page web et mosaique : OK")
+        time.sleep(DataDict['RefreshRate'])
 
 # Fonction de collection des informations par SNMP
 def IRDInfo(i, Data):
@@ -162,7 +163,6 @@ def TCPget(Data, DataCSV):
         s.settimeout(None)
     except:
         logger.error("Impossible de joindre la mosaique ({}) !".format(Data['MosaAddr']))
-        time.sleep(0) if sys.platform.lower() == 'win32' else time.sleep(1.5)
         return
     OpenCmd = "<openID>{}</openID>\n".format(Data['MosaRoom'])
     s.send(OpenCmd.encode())
