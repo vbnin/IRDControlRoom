@@ -62,7 +62,7 @@ except:
 if __name__ == '__main__':
     try:
         logger.info("Démarrage du script, en attente des services réseaux...")
-        time.sleep(10)
+        time.sleep(6)
         Dict = InitScript(Data)
         Data = {**Data, **Dict}
         logger.info("Initialisation de la boucle de vérification...")
