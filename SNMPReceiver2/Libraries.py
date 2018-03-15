@@ -92,6 +92,8 @@ def IRDInfo(i, Data):
             Info[4] = 'Locked'
             Info[6] = float(Info[6])/10
             Info[7] = float(Info[7])/10
+        elif int(Info[4]) == 999:
+            Info[4:8] = ['Erreur !!', 'SNMP Timeout !!', 0.0, 0.0]
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "DR8400":
@@ -102,6 +104,8 @@ def IRDInfo(i, Data):
         Info[7] = float(Info[7])/10
         if int(Info[4]) == 1:
             Info[4] = 'Locked'
+        elif int(Info[4]) == 999:
+            Info[4:8] = ['Erreur !!', 'SNMP Timeout !!', 0.0, 0.0]
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "TT1260":
@@ -112,6 +116,8 @@ def IRDInfo(i, Data):
         Info[7] = float(Info[7])/100
         if int(Info[4]) == 2:
             Info[4] = 'Locked'
+        elif int(Info[4]) == 999:
+            Info[4:8] = ['Erreur !!', 'SNMP Timeout !!', 0.0, 0.0]
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "RX8200":
@@ -125,6 +131,8 @@ def IRDInfo(i, Data):
             except:
                 logger.error('Problème avec les valeurs renvoyés par le RX8200 : {}'.format(Position))
                 Info[6:8] = [0.0, 0.0]
+        elif Info[4] == 999:
+            Info[4:8] = ['Erreur !!', 'SNMP Timeout !!', 0.0, 0.0]
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     elif Data[Model] == "RX1290":
@@ -135,6 +143,8 @@ def IRDInfo(i, Data):
         Info[7] = float(Info[7])/100
         if int(Info[4]) == 2:
             Info[4] = 'Locked'
+        elif int(Info[4]) == 999:
+            Info[4:8] = ['Erreur !!', 'SNMP Timeout !!', 0.0, 0.0]
         else:
             Info[4:8] = ['Unlocked', 'Unlocked', 0.0, 0.0]
     else:
@@ -151,8 +161,8 @@ def SNMPget(IPAddr, SNMPv, OidList):
             snmp.append(m.group(2))
         return snmp
     except:
-        logger.error("Impossible de récupérer les infos SNMP...")
-        snmp = ['Erreur', 'Erreur : SNMP timeout', 0.0, 0.0]
+        logger.error("Impossible de récupérer les infos SNMP de l'équipement : {} !!".format(IPAddr))
+        snmp = [999, 'Erreur : SNMP timeout', 0.0, 0.0]
         return snmp
 
 # Définition de la fonction de connexion TCP à la mosaique
