@@ -1,4 +1,7 @@
 # IRDControlRoom
-This is an SNMP data collector displaying informations via web UI and GPIO on a Raspberry Pi hardware basis.
+This script collects various information from satellite receivers (IRD) through SNMP protocole and orders them in a CSV file every 2 seconds.
 
-For information, SNMPInfo is a discontinued pre-version and SNMPReceiver is the actual working code.
+This CSV file can then be read by a web server and displayed for end users.
+
+Code massively updated in 2019
+
